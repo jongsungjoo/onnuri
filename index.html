@@ -108,13 +108,16 @@
 
             window.SOON_CONFIG = cfg;
             window.FB_SDK = { auth, db, storage, ref, uploadBytes, getDownloadURL, deleteObject, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, query, getDoc, updateDoc, signInAnonymously, onAuthStateChanged, appId: 'soon-manager-v1' };
+            window.__SOON_MODE__ = 'app';
             window.dispatchEvent(new CustomEvent('firebase-ready'));
         } catch(e) {
             console.error('Firebase init error:', e);
             localStorage.removeItem('soon-config');
+            window.__SOON_MODE__ = 'wizard';
             window.dispatchEvent(new CustomEvent('show-wizard'));
         }
     } else {
+        window.__SOON_MODE__ = 'wizard';
         window.dispatchEvent(new CustomEvent('show-wizard'));
     }
 </script>
@@ -1729,12 +1732,14 @@ const Root = () => {
     const [mode, setMode] = useState('loading');
 
     useEffect(()=>{
+        // 이미 모듈 스크립트가 완료된 경우 (race condition 방지)
+        if (window.__SOON_MODE__ === 'app') { setMode('app'); return; }
+        if (window.__SOON_MODE__ === 'wizard') { setMode('wizard'); return; }
+        // 아직 완료 안 된 경우 이벤트 대기
         const onReady = () => setMode('app');
         const onWizard = () => setMode('wizard');
         window.addEventListener('firebase-ready', onReady);
         window.addEventListener('show-wizard', onWizard);
-        // 이미 발생한 경우
-        if (window.FB_SDK) setMode('app');
         return ()=>{
             window.removeEventListener('firebase-ready', onReady);
             window.removeEventListener('show-wizard', onWizard);
