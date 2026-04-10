@@ -1,1 +1,1758 @@
-1
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="순 매니저">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#802B22">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/jongsungjoo/david5/refs/heads/main/icon2.png">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/jongsungjoo/david5/refs/heads/main/icon2.png">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="순 매니저">
+    <meta property="og:description" content="순기도제목, 순예배주보, 순예배기록 무료 관리 시스템">
+    <meta property="og:image" content="https://raw.githubusercontent.com/jongsungjoo/david5/refs/heads/main/icon.png">
+    <title>순 매니저</title>
+
+    <script>
+        const manifest = {
+            "name": "순매니저", "short_name": "순매니저", "start_url": ".", "display": "standalone",
+            "background_color": "#F3F4F6", "theme_color": "#802B22",
+            "icons": [{"src": "https://raw.githubusercontent.com/jongsungjoo/david5/refs/heads/main/icon2.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"}]
+        };
+        const mBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+        document.write('<link rel="manifest" href="' + URL.createObjectURL(mBlob) + '">');
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const sw = "self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>new Response('Offline'))));";
+                navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+            });
+        }
+    </script>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        :root { --primary: #802B22; --bg: #F3F4F6; }
+        html, body { font-family: 'Pretendard', sans-serif; background-color: var(--bg); color: #1F2937; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; width: 100%; }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .card-shadow { box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; }
+        @media (min-width: 768px) { .calendar-grid { gap: 4px; } }
+        .calendar-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:5px; padding-bottom:4px; font-size:.8rem; font-weight:700; border-radius:8px; transition:all .2s; position:relative; gap:1px; min-width:0; overflow:visible; min-height:36px; }
+        .calendar-day.has-extra { aspect-ratio: unset; }
+        @media (min-width: 768px) { .calendar-day { border-radius:12px; padding-top:7px; } }
+        .has-record::after { content:''; position:absolute; bottom:4px; width:4px; height:4px; background:var(--primary); border-radius:50%; }
+        @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        .animate-slide-up { animation: slideUp .4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        .fade-in { animation: fadeIn .3s ease-out; }
+        @keyframes wizardIn { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:translateX(0); } }
+        .wizard-in { animation: wizardIn .3s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width:8px; height:8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background:transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background:#9ca3af; }
+        @media (max-width: 768px) { .custom-scrollbar::-webkit-scrollbar { display:none; } }
+        .bulletin-border { border:1px solid #E5E7EB; position:relative; background-color:#FAFAFA; }
+        .bulletin-border::before { content:''; position:absolute; top:6px; left:6px; right:6px; bottom:6px; border:1px solid rgba(128,43,34,0.2); pointer-events:none; }
+        .wizard-code { font-family: 'Courier New', monospace; font-size: 12px; background:#1e1e2e; color:#cdd6f4; padding:14px; border-radius:12px; overflow-x:auto; white-space:pre; line-height:1.6; }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ① Firebase 동적 초기화 -->
+<script type="module">
+    const getConfig = () => {
+        // URL 해시에서 설정 읽기 (순원 공유 URL)
+        const hash = window.location.hash.slice(1);
+        if (hash) {
+            try {
+                const cfg = JSON.parse(atob(decodeURIComponent(hash)));
+                if (cfg && cfg.firebaseConfig && cfg.firebaseConfig.projectId) {
+                    localStorage.setItem('soon-config', JSON.stringify(cfg));
+                    history.replaceState(null, '', window.location.pathname + window.location.search);
+                    return cfg;
+                }
+            } catch(e) {}
+        }
+        // localStorage에서 읽기
+        try {
+            const stored = localStorage.getItem('soon-config');
+            if (stored) return JSON.parse(stored);
+        } catch(e) {}
+        return null;
+    };
+
+    const cfg = getConfig();
+
+    if (cfg && cfg.firebaseConfig && cfg.firebaseConfig.projectId) {
+        try {
+            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+            const { getAuth, signInAnonymously, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+            const { getFirestore, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, query, getDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            const { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js");
+
+            const app = initializeApp(cfg.firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            const storage = getStorage(app);
+
+            window.SOON_CONFIG = cfg;
+            window.FB_SDK = { auth, db, storage, ref, uploadBytes, getDownloadURL, deleteObject, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, query, getDoc, updateDoc, signInAnonymously, onAuthStateChanged, appId: 'soon-manager-v1' };
+            window.dispatchEvent(new CustomEvent('firebase-ready'));
+        } catch(e) {
+            console.error('Firebase init error:', e);
+            localStorage.removeItem('soon-config');
+            window.dispatchEvent(new CustomEvent('show-wizard'));
+        }
+    } else {
+        window.dispatchEvent(new CustomEvent('show-wizard'));
+    }
+</script>
+
+<!-- ② React 앱 (SetupWizard + 메인 앱) -->
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+// ═══════════════════════════════════════════════
+//  설정 마법사 (SetupWizard) — Firebase Storage 통합
+// ═══════════════════════════════════════════════
+const FIRESTORE_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}`;
+
+const STORAGE_RULES = `rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}`;
+
+const WizardStep = ({ step, total, children }) => (
+    <div key={step} className="wizard-in">
+        <div className="flex items-center gap-2 mb-6">
+            {Array.from({length: total}).map((_, i) => (
+                <div key={i} className={`h-1.5 rounded-full flex-1 transition-all duration-500 ${i < step ? 'bg-[#802B22]' : i === step ? 'bg-[#802B22]/60' : 'bg-gray-200'}`} />
+            ))}
+        </div>
+        <div className="text-xs font-black text-[#802B22]/60 uppercase tracking-widest mb-1">{step + 1} / {total} 단계</div>
+        {children}
+    </div>
+);
+
+const CopyButton = ({ text, label = "복사" }) => {
+    const [copied, setCopied] = useState(false);
+    const copy = () => {
+        navigator.clipboard?.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {
+            const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+            setCopied(true); setTimeout(() => setCopied(false), 2000);
+        });
+    };
+    return (
+        <button onClick={copy} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all ${copied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            {copied ? '✓ 복사됨' : label}
+        </button>
+    );
+};
+
+const GuideBox = ({ icon, color = "blue", children }) => {
+    const colors = { blue: 'bg-blue-50 border-blue-100 text-blue-800', green: 'bg-green-50 border-green-100 text-green-800', orange: 'bg-orange-50 border-orange-100 text-orange-800' };
+    return (
+        <div className={`border rounded-2xl p-4 flex gap-3 ${colors[color] || colors.blue}`}>
+            <span className="text-xl shrink-0 mt-0.5">{icon}</span>
+            <div className="text-sm font-bold leading-relaxed">{children}</div>
+        </div>
+    );
+};
+
+const StepItem = ({ num, children, done, onToggle }) => (
+    <div className="flex gap-3 items-start">
+        <button onClick={onToggle} className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-black transition-all border-2 mt-0.5 ${done ? 'bg-[#802B22] border-[#802B22] text-white' : 'border-gray-300 text-gray-400 hover:border-[#802B22]'}`}>
+            {done ? '✓' : num}
+        </button>
+        <div className={`text-sm font-bold leading-relaxed pt-1 ${done ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{children}</div>
+    </div>
+);
+
+const SetupWizard = () => {
+    const [step, setStep] = useState(0);
+    const [checks, setChecks] = useState({});
+    const [fbConfigText, setFbConfigText] = useState('');
+    const [parsedConfig, setParsedConfig] = useState(null);
+    const [parseError, setParseError] = useState('');
+    const [testStatus, setTestStatus] = useState('idle');
+    const [testError, setTestError] = useState('');
+    const [groupName, setGroupName] = useState('');
+    const [adminPwd, setAdminPwd] = useState('');
+    const [shareUrl, setShareUrl] = useState('');
+    const [urlCopied, setUrlCopied] = useState(false);
+
+    const TOTAL = 5;
+    const check = (key) => setChecks(p => ({...p, [key]: !p[key]}));
+
+    const parseConfig = () => {
+        setParseError('');
+        const text = fbConfigText.trim();
+        try {
+            let jsonStr = text;
+            const m = text.match(/const\s+firebaseConfig\s*=\s*(\{[\s\S]*?\});?/) ||
+                       text.match(/firebaseConfig:\s*(\{[\s\S]*?\})/) ||
+                       text.match(/(\{[\s\S]*?"apiKey"[\s\S]*?\})/);
+            if (m) jsonStr = m[1];
+            jsonStr = jsonStr
+                .replace(/\/\/.*$/gm, '')
+                .replace(/,(\s*[\}\]])/g, '$1')
+                .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*):/g, '$1"$2"$3:')
+                .trim();
+            const parsed = JSON.parse(jsonStr);
+            if (!parsed.apiKey || !parsed.projectId) throw new Error('apiKey 또는 projectId 없음');
+            setParsedConfig(parsed);
+            return true;
+        } catch(e) {
+            setParseError('파싱 실패: ' + e.message + '\nFirebase 콘솔에서 firebaseConfig 전체를 복사해서 붙여넣어 주세요.');
+            return false;
+        }
+    };
+
+    const testConnection = async () => {
+        if (!parsedConfig) return;
+        setTestStatus('testing'); setTestError('');
+        try {
+            const { initializeApp, deleteApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+            const { getAuth, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+            const { getFirestore, doc, getDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            const testId = 'wizard-test-' + Date.now();
+            const app = initializeApp(parsedConfig, testId);
+            const auth = getAuth(app); const db = getFirestore(app);
+            await signInAnonymously(auth);
+            await getDoc(doc(db, 'artifacts', 'soon-manager-v1', 'public', 'data', 'settings', 'test'));
+            await deleteApp(app);
+            setTestStatus('success');
+        } catch(e) {
+            setTestStatus('error');
+            if (e.code === 'auth/configuration-not-found' || e.code === 'auth/operation-not-allowed') {
+                setTestError('익명 로그인이 활성화되지 않았습니다. 3단계를 다시 확인해주세요.');
+            } else if (e.message?.includes('PERMISSION_DENIED') || e.code === 'permission-denied') {
+                setTestError('Firestore 보안 규칙이 설정되지 않았습니다. 2단계를 다시 확인해주세요.');
+            } else {
+                setTestError(e.message || e.code || '알 수 없는 오류');
+            }
+        }
+    };
+
+    const finish = async () => {
+        const cfg = {
+            groupName: groupName.trim() || '우리 순',
+            firebaseConfig: parsedConfig,
+        };
+        localStorage.setItem('soon-config', JSON.stringify(cfg));
+        try {
+            const { initializeApp, deleteApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+            const { getAuth, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+            const { getFirestore, doc, setDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            const app = initializeApp(parsedConfig, 'setup-fin-' + Date.now());
+            const auth = getAuth(app); const db = getFirestore(app);
+            await signInAnonymously(auth);
+            await setDoc(doc(db, 'artifacts', 'soon-manager-v1', 'public', 'data', 'settings', 'admin'), { password: adminPwd.trim() || '1234' });
+            await deleteApp(app);
+        } catch(e) { console.warn('Admin pwd save failed:', e); }
+        const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))));
+        setShareUrl(window.location.origin + window.location.pathname + '#' + encoded);
+        setStep(6);
+    };
+
+    const copyUrl = () => {
+        navigator.clipboard?.writeText(shareUrl).then(() => { setUrlCopied(true); setTimeout(() => setUrlCopied(false), 3000); }).catch(() => {
+            const ta = document.createElement('textarea'); ta.value = shareUrl; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+            setUrlCopied(true); setTimeout(() => setUrlCopied(false), 3000);
+        });
+    };
+
+    const BtnPrimary = ({ onClick, disabled, children }) => (
+        <button onClick={onClick} disabled={disabled} className={`w-full py-4 rounded-2xl font-black text-base transition-all ${disabled ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#802B22] text-white shadow-lg hover:bg-[#6c231c] active:scale-95'}`}>
+            {children}
+        </button>
+    );
+    const BtnSecondary = ({ onClick, children }) => (
+        <button onClick={onClick} className="w-full py-3.5 rounded-2xl font-black text-base bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95 transition-all">
+            {children}
+        </button>
+    );
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-[#802B22]/5 via-white to-orange-50/30 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl p-8 relative overflow-hidden max-h-screen overflow-y-auto">
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#802B22] via-orange-400 to-[#802B22] opacity-30 rounded-t-[2.5rem]" />
+
+                {/* STEP 0: 환영 */}
+                {step === 0 && (
+                    <div className="wizard-in text-center">
+                        <div className="text-6xl mb-5">⛪</div>
+                        <h1 className="text-3xl font-black text-gray-900 mb-2">순 매니저</h1>
+                        <p className="text-[#802B22] font-black text-sm mb-6 tracking-wider">SOON MANAGER SETUP</p>
+                        <div className="bg-gray-50 rounded-2xl p-5 text-left space-y-3 mb-5">
+                            {[['📿','순기도제목','순원별 기도제목 태그 분류 & 공유'],['📖','순예배주보','악보·성경·광고 이미지 업로드'],['📅','순예배기록','출석·헌금·달력 연간 통계']].map(([ic,t,d]) => (
+                                <div key={t} className="flex items-start gap-3">
+                                    <span className="text-xl">{ic}</span>
+                                    <div><div className="font-black text-gray-800 text-sm">{t}</div><div className="text-gray-500 text-xs font-bold">{d}</div></div>
+                                </div>
+                            ))}
+                        </div>
+                        <GuideBox icon="☁️" color="green">이미지는 <strong>Firebase Storage</strong>에 저장됩니다. 별도 가입 없이 같은 구글 계정으로 사용!</GuideBox>
+                        <div className="mt-4 bg-amber-50 border border-amber-100 rounded-2xl p-3 text-xs text-amber-700 font-bold text-left">
+                            ⏱️ 설정에 약 <strong>10분</strong>이 걸립니다. 구글 계정만 있으면 됩니다.
+                        </div>
+                        <div className="mt-5">
+                            <BtnPrimary onClick={() => setStep(1)}>설정 시작하기 →</BtnPrimary>
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 1: Firebase 프로젝트 생성 */}
+                {step === 1 && (
+                    <WizardStep step={0} total={TOTAL}>
+                        <h2 className="text-2xl font-black text-gray-900 mb-1">Firebase 프로젝트 만들기</h2>
+                        <p className="text-gray-500 font-bold text-sm mb-4">구글의 무료 데이터베이스 서비스</p>
+                        <GuideBox icon="💡">Firestore 무료 플랜: 하루 읽기 5만 번·쓰기 2만 번. Storage 무료: 5GB. 소규모 순모임에 충분합니다.</GuideBox>
+                        <a href="https://console.firebase.google.com" target="_blank" rel="noopener" className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-black text-sm bg-orange-500 text-white shadow-md hover:bg-orange-600 active:scale-95 transition-all mt-4 mb-1">
+                            🔥 Firebase 콘솔 열기
+                        </a>
+                        <div className="bg-gray-50 rounded-2xl p-4 space-y-3 mt-3">
+                            {[
+                                ['"프로젝트 추가" 버튼 클릭',''],
+                                ['프로젝트 이름 입력','예: my-soon-manager (영문 권장)'],
+                                ['Google Analytics 비활성화','토글 끄고 진행'],
+                                ['"프로젝트 만들기" 클릭 후 완료 대기',''],
+                            ].map(([t,d],i) => (
+                                <StepItem key={i} num={i+1} done={checks[`s1_${i}`]} onToggle={() => check(`s1_${i}`)}>
+                                    <span className="font-black text-gray-800">{t}</span>
+                                    {d && <><br/><span className="font-bold text-gray-500 text-xs">{d}</span></>}
+                                </StepItem>
+                            ))}
+                        </div>
+                        <div className="mt-5 space-y-2">
+                            <BtnPrimary onClick={() => setStep(2)}>완료했어요 →</BtnPrimary>
+                            <BtnSecondary onClick={() => setStep(0)}>← 이전</BtnSecondary>
+                        </div>
+                    </WizardStep>
+                )}
+
+                {/* STEP 2: Firestore + Storage + 보안 규칙 */}
+                {step === 2 && (
+                    <WizardStep step={1} total={TOTAL}>
+                        <h2 className="text-2xl font-black text-gray-900 mb-1">데이터베이스 & 스토리지 설정</h2>
+                        <p className="text-gray-500 font-bold text-sm mb-4">순원 정보 저장 + 사진 업로드 공간 만들기</p>
+
+                        {/* Firestore */}
+                        <div className="mb-1">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="w-6 h-6 rounded-full bg-[#802B22] text-white text-xs font-black flex items-center justify-center shrink-0">A</span>
+                                <span className="font-black text-gray-800">Firestore Database 만들기</span>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-3 space-y-2 ml-8">
+                                {[
+                                    ['빌드 → Firestore Database 클릭','왼쪽 메뉴'],
+                                    ['"데이터베이스 만들기" → 프로덕션 모드',''],
+                                    ['리전: asia-northeast3 (서울) 선택',''],
+                                    ['"규칙" 탭 → 아래 규칙으로 교체 → 게시',''],
+                                ].map(([t,d],i) => (
+                                    <StepItem key={i} num={i+1} done={checks[`s2a_${i}`]} onToggle={() => check(`s2a_${i}`)}>
+                                        <span className="font-black text-gray-800 text-xs">{t}</span>
+                                        {d && <><br/><span className="font-bold text-gray-400 text-[11px]">{d}</span></>}
+                                    </StepItem>
+                                ))}
+                            </div>
+                            <div className="mt-2 ml-8">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Firestore 보안 규칙</span>
+                                    <CopyButton text={FIRESTORE_RULES} label="복사" />
+                                </div>
+                                <div className="wizard-code">{FIRESTORE_RULES}</div>
+                            </div>
+                        </div>
+
+                        {/* Storage */}
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-black flex items-center justify-center shrink-0">B</span>
+                                <span className="font-black text-gray-800">Storage 만들기 <span className="text-xs text-orange-500 font-bold">(사진 업로드용)</span></span>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-3 space-y-2 ml-8">
+                                {[
+                                    ['빌드 → Storage 클릭','왼쪽 메뉴'],
+                                    ['"시작하기" → 프로덕션 모드',''],
+                                    ['리전은 기본값 유지 후 완료',''],
+                                    ['"규칙" 탭 → 아래 규칙으로 교체 → 게시',''],
+                                ].map(([t,d],i) => (
+                                    <StepItem key={i} num={i+1} done={checks[`s2b_${i}`]} onToggle={() => check(`s2b_${i}`)}>
+                                        <span className="font-black text-gray-800 text-xs">{t}</span>
+                                        {d && <><br/><span className="font-bold text-gray-400 text-[11px]">{d}</span></>}
+                                    </StepItem>
+                                ))}
+                            </div>
+                            <div className="mt-2 ml-8">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Storage 보안 규칙</span>
+                                    <CopyButton text={STORAGE_RULES} label="복사" />
+                                </div>
+                                <div className="wizard-code">{STORAGE_RULES}</div>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 space-y-2">
+                            <BtnPrimary onClick={() => setStep(3)}>완료했어요 →</BtnPrimary>
+                            <BtnSecondary onClick={() => setStep(1)}>← 이전</BtnSecondary>
+                        </div>
+                    </WizardStep>
+                )}
+
+                {/* STEP 3: 익명 인증 */}
+                {step === 3 && (
+                    <WizardStep step={2} total={TOTAL}>
+                        <h2 className="text-2xl font-black text-gray-900 mb-1">익명 로그인 활성화</h2>
+                        <p className="text-gray-500 font-bold text-sm mb-4">순원들이 가입 없이 앱을 쓸 수 있게 합니다</p>
+                        <GuideBox icon="🔒">익명 로그인은 개인 정보 없이도 Firebase를 안전하게 사용하는 구글의 인증 방식입니다. Storage 접근도 이 인증을 통해 처리됩니다.</GuideBox>
+                        <div className="mt-4 bg-gray-50 rounded-2xl p-4 space-y-3">
+                            {[
+                                ['빌드 → Authentication 클릭','왼쪽 메뉴'],
+                                ['"시작하기" 버튼 클릭',''],
+                                ['"Sign-in method" 탭 클릭',''],
+                                ['"익명" 항목 클릭','아래쪽에 위치'],
+                                ['사용 설정 토글 켜기 → 저장',''],
+                            ].map(([t,d],i) => (
+                                <StepItem key={i} num={i+1} done={checks[`s3_${i}`]} onToggle={() => check(`s3_${i}`)}>
+                                    <span className="font-black text-gray-800">{t}</span>
+                                    {d && <><br/><span className="font-bold text-gray-500 text-xs">{d}</span></>}
+                                </StepItem>
+                            ))}
+                        </div>
+                        <div className="mt-5 space-y-2">
+                            <BtnPrimary onClick={() => setStep(4)}>완료했어요 →</BtnPrimary>
+                            <BtnSecondary onClick={() => setStep(2)}>← 이전</BtnSecondary>
+                        </div>
+                    </WizardStep>
+                )}
+
+                {/* STEP 4: Firebase Config + 연결 테스트 */}
+                {step === 4 && (
+                    <WizardStep step={3} total={TOTAL}>
+                        <h2 className="text-2xl font-black text-gray-900 mb-1">Firebase 설정값 가져오기</h2>
+                        <p className="text-gray-500 font-bold text-sm mb-4">앱을 내 Firebase에 연결하는 코드입니다</p>
+                        <div className="bg-gray-50 rounded-2xl p-4 space-y-3 mb-4">
+                            {[
+                                ['Firebase 콘솔 홈 → 프로젝트 개요 클릭','상단 왼쪽'],
+                                ['"앱 추가" 또는 "</>" 웹 아이콘 클릭',''],
+                                ['앱 이름 입력 후 "앱 등록" 클릭','이름은 아무거나'],
+                                ['아래 firebaseConfig 코드 전체 복사',''],
+                            ].map(([t,d],i) => (
+                                <StepItem key={i} num={i+1} done={checks[`s4_${i}`]} onToggle={() => check(`s4_${i}`)}>
+                                    <span className="font-black text-gray-800">{t}</span>
+                                    {d && <><br/><span className="font-bold text-gray-500 text-xs">{d}</span></>}
+                                </StepItem>
+                            ))}
+                        </div>
+                        <textarea
+                            value={fbConfigText}
+                            onChange={e => { setFbConfigText(e.target.value); setParsedConfig(null); setParseError(''); setTestStatus('idle'); }}
+                            placeholder={'const firebaseConfig = {\n  apiKey: "AIzaSy...",\n  authDomain: "...",\n  projectId: "...",\n  storageBucket: "...",\n  ...\n};'}
+                            className="w-full h-36 p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono outline-none focus:border-[#802B22] resize-none"
+                        />
+                        {parseError && <p className="text-red-500 text-xs font-bold mt-2 whitespace-pre-wrap">{parseError}</p>}
+                        {parsedConfig && <div className="mt-2 bg-green-50 border border-green-200 rounded-xl p-3 text-xs text-green-800 font-bold">✓ 파싱 성공: {parsedConfig.projectId}</div>}
+                        <div className="mt-3 space-y-2">
+                            {!parsedConfig ? (
+                                <button onClick={parseConfig} disabled={!fbConfigText.trim()} className={`w-full py-3.5 rounded-2xl font-black text-sm transition-all ${fbConfigText.trim() ? 'bg-gray-800 text-white hover:bg-gray-700 active:scale-95' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>설정값 확인하기</button>
+                            ) : testStatus === 'idle' ? (
+                                <button onClick={testConnection} className="w-full py-3.5 rounded-2xl font-black text-sm bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all">🔌 Firebase 연결 테스트</button>
+                            ) : testStatus === 'testing' ? (
+                                <div className="w-full py-3.5 rounded-2xl font-black text-sm bg-blue-50 text-blue-600 text-center flex items-center justify-center gap-2">
+                                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    연결 테스트 중...
+                                </div>
+                            ) : testStatus === 'success' ? (
+                                <div className="space-y-2">
+                                    <div className="w-full py-3.5 rounded-2xl font-black text-sm bg-green-100 text-green-700 text-center">🎉 연결 성공!</div>
+                                    <BtnPrimary onClick={() => setStep(5)}>다음 단계 →</BtnPrimary>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <div className="w-full py-3 rounded-2xl font-black text-xs bg-red-50 text-red-600 text-center px-4">{testError}</div>
+                                    <button onClick={() => setTestStatus('idle')} className="w-full py-3 rounded-2xl font-black text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95">다시 시도</button>
+                                </div>
+                            )}
+                        </div>
+                        <div className="mt-2"><BtnSecondary onClick={() => setStep(3)}>← 이전</BtnSecondary></div>
+                    </WizardStep>
+                )}
+
+                {/* STEP 5: 순 정보 */}
+                {step === 5 && (
+                    <WizardStep step={4} total={TOTAL}>
+                        <h2 className="text-2xl font-black text-gray-900 mb-1">순 정보 설정</h2>
+                        <p className="text-gray-500 font-bold text-sm mb-5">마지막 단계입니다! 거의 다 왔어요 🎉</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">순 이름</label>
+                                <input type="text" value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="예: 다윗 5순, 룻 3순, 에스더 2순..." className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-black text-base outline-none focus:border-[#802B22] transition-colors"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">관리자 비밀번호</label>
+                                <input type="text" value={adminPwd} onChange={e => setAdminPwd(e.target.value)} placeholder="숫자나 문자 조합 (예: 1234)" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-black text-base outline-none focus:border-[#802B22] transition-colors"/>
+                                <p className="text-xs text-gray-400 font-bold mt-2 px-1">관리자만 예배기록 삭제·수정, 순원 명단 편집이 가능합니다. 나중에 앱 안에서 변경할 수 있습니다.</p>
+                            </div>
+                        </div>
+                        <div className="mt-8 space-y-2">
+                            <BtnPrimary onClick={finish} disabled={!groupName.trim()}>✨ 앱 완성하기</BtnPrimary>
+                            <BtnSecondary onClick={() => setStep(4)}>← 이전</BtnSecondary>
+                        </div>
+                    </WizardStep>
+                )}
+
+                {/* STEP 6: 완성! */}
+                {step === 6 && (
+                    <div className="wizard-in text-center">
+                        <div className="text-6xl mb-4">🎉</div>
+                        <h2 className="text-2xl font-black text-gray-900 mb-2">설정 완료!</h2>
+                        <p className="text-gray-500 font-bold text-sm mb-6"><strong className="text-[#802B22]">{groupName}</strong> 순 매니저가 만들어졌습니다</p>
+                        <div className="bg-[#802B22]/5 border border-[#802B22]/20 rounded-2xl p-5 text-left mb-4">
+                            <p className="text-xs font-black text-[#802B22] uppercase tracking-widest mb-2">📱 순원 공유 URL</p>
+                            <p className="text-xs text-gray-500 font-bold mb-3">이 URL을 카톡으로 공유하면 순원들은 별도 설정 없이 바로 사용 가능합니다.</p>
+                            <div className="bg-white rounded-xl p-3 border border-gray-200 text-xs font-mono text-gray-600 break-all mb-3">{shareUrl}</div>
+                            <button onClick={copyUrl} className={`w-full py-3 rounded-xl font-black text-sm transition-all ${urlCopied ? 'bg-green-100 text-green-700' : 'bg-[#802B22] text-white hover:bg-[#6c231c] active:scale-95'}`}>
+                                {urlCopied ? '✓ URL 복사됨!' : '🔗 순원 공유 URL 복사'}
+                            </button>
+                        </div>
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left mb-5">
+                            <p className="text-xs font-black text-amber-700 mb-1">💾 이 URL 꼭 저장해두세요!</p>
+                            <p className="text-xs text-amber-700 font-bold leading-relaxed">새 기기·브라우저에서는 이 URL로 다시 접속하면 됩니다. 카톡 나에게 보내기, 메모앱에 저장 추천!</p>
+                        </div>
+                        <button onClick={() => window.location.reload()} className="w-full py-4 rounded-2xl font-black text-base bg-[#802B22] text-white shadow-lg hover:bg-[#6c231c] active:scale-95 transition-all">
+                            앱 시작하기 →
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════
+//  원본 앱 컴포넌트들 (다이나믹 설정 반영)
+// ═══════════════════════════════════════════════
+
+const Icon = ({ name, className = "w-5 h-5" }) => {
+    const ref = useRef(null);
+    useEffect(() => {
+        if (window.lucide && ref.current) {
+            ref.current.innerHTML = `<i data-lucide="${name}"></i>`;
+            window.lucide.createIcons({ root: ref.current });
+        }
+    }, [name]);
+    return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} />;
+};
+
+const Card = ({ children, className = "" }) => (
+    <div className={`bg-white rounded-[32px] p-6 card-shadow ${className}`}>{children}</div>
+);
+
+const compressImage = (file) => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const MAX_WIDTH = 800;
+                let width = img.width, height = img.height;
+                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                canvas.width = width; canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+        };
+    });
+};
+
+const getLocalYYYYMMDD = (dateObj) => {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+// ── 순예배기록 뷰 ──────────────────────────────────────────────
+const WorshipHistoryView = ({ history, members, onAddRecord, finance, onUpdateFinanceEdits, onUpdateRecord, onDeleteRecord, onOpenDirectory, isGlobalAdmin, onRequestAdmin }) => {
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const scrollRefs = useRef({});
+    const [showAdd, setShowAdd] = useState(false);
+    const [newRecord, setNewRecord] = useState({ date: getLocalYYYYMMDD(new Date()), type: "순예배", members: [], offering: "", location: "", notes: "" });
+    const activeMembers = useMemo(() => members.filter(m => m.isParticipating && m.name.trim() !== ''), [members]);
+    const [editingRecord, setEditingRecord] = useState(null);
+    const [prayerModal, setPrayerModal] = useState(null);
+    const [financeEditMode, setFinanceEditMode] = useState(false);
+    const [edits, setEdits] = useState({});
+    const [carry, setCarry] = useState(finance.carryOver || 0);
+    useEffect(() => { setCarry(finance.carryOver || 0); }, [finance.carryOver]);
+
+    const daysInMonth = useMemo(() => {
+        const year = currentMonth.getFullYear(), month = currentMonth.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        const days = [];
+        for (let i = 0; i < firstDay; i++) days.push(null);
+        for (let i = 1; i <= totalDays; i++) days.push(new Date(year, month, i));
+        return days;
+    }, [currentMonth]);
+
+    const recordDates = useMemo(() => { const map = new Map(); history.forEach(h => map.set(h.date, h)); return map; }, [history]);
+
+    const birthdayMap = useMemo(() => {
+        const map = new Map();
+        members.forEach(m => {
+            if (m.isParticipating && m.name.trim() !== '' && m.birthday && m.birthday.trim()) {
+                const key = m.birthday.trim();
+                map.set(key, [...(map.get(key) || []), { name: m.name, role: m.role || '' }]);
+            }
+        });
+        return map;
+    }, [members]);
+
+    const handleDateClick = (dateStr) => scrollRefs.current[dateStr]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const cumulativeTotal = useMemo(() => {
+        const totalOffering = history.reduce((sum, h) => sum + Math.floor((Number(h.offering) || 0) * 0.4), 0);
+        return totalOffering + (Number(finance.carryOver) || 0);
+    }, [history, finance]);
+
+    const currentYear = currentMonth.getFullYear();
+    const currentHalf = currentMonth.getMonth() < 6 ? '상반기' : '하반기';
+
+    const quarterStats = useMemo(() => {
+        const isFirstHalf = currentMonth.getMonth() < 6;
+        const records = history.filter(h => {
+            const d = new Date(h.date); const month = d.getMonth();
+            return d.getFullYear() === currentYear && (isFirstHalf ? month < 6 : month >= 6);
+        });
+        return { count: records.filter(h => h.type === '순예배' || !h.type || h.type === '종강예배').length };
+    }, [history, currentYear, currentMonth]);
+
+    const handleSaveFinance = () => { onUpdateFinanceEdits(carry, edits); setFinanceEditMode(false); setEdits({}); alert("재정 설정이 저장되었습니다."); };
+    const executeWithAuth = (action) => { if (isGlobalAdmin) { action(); } else { onRequestAdmin(action); } };
+
+    return (
+        <div className="space-y-6 animate-slide-up">
+            <header className="flex justify-between items-end px-1">
+                <div><span className="text-[#802B22] font-black text-[10px] tracking-widest uppercase">Management</span><h1 className="text-2xl font-black">순예배 기록</h1></div>
+                <button onClick={() => setShowAdd(!showAdd)} className="w-10 h-10 bg-[#802B22] text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-90 hover:bg-[#6c231c]"><Icon name={showAdd ? "x" : "plus"} /></button>
+            </header>
+
+            {financeEditMode ? (
+                <div className="max-w-xl mx-auto w-full">
+                    <Card className="border-4 border-[#802B22] bg-white relative z-20 fade-in p-4 md:p-6">
+                        <div className="flex justify-between items-center mb-4 md:mb-5 border-b border-gray-50 pb-3">
+                            <h3 className="font-black text-lg md:text-2xl text-gray-800 flex items-center gap-2"><Icon name="coins" className="text-[#802B22] w-5 h-5"/> 누적순헌금 현황</h3>
+                            <button onClick={() => setFinanceEditMode(false)} className="p-1.5 bg-gray-50 rounded-full text-gray-500 active:scale-95 hover:bg-gray-100"><Icon name="x" className="w-5 h-5" /></button>
+                        </div>
+                        <div className="space-y-5">
+                            <div className="bg-red-50 p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-center sm:items-end gap-2 border border-red-100 shadow-inner">
+                                <span className="font-black text-[#802B22] text-xs md:text-sm tracking-widest uppercase">총 누적합산 금액</span>
+                                <span className="font-black text-2xl md:text-3xl text-gray-800 tracking-tight">₩ {cumulativeTotal.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full">
+                                <label className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-widest block mb-1.5 px-1">전학기 이월금</label>
+                                <div className="flex items-center gap-2 w-full">
+                                    <div className="flex items-center gap-2 bg-gray-50 p-1.5 pl-3 rounded-xl flex-1 border border-gray-100">
+                                        <input type="number" value={carry} onChange={e => setCarry(e.target.value)} className="flex-1 min-w-0 w-full py-1 bg-transparent font-black text-sm md:text-base outline-none text-right text-gray-700" placeholder="이월금" />
+                                        <span className="text-xs md:text-sm font-bold text-gray-400 pr-2 shrink-0">원</span>
+                                    </div>
+                                    <button onClick={() => { onUpdateFinanceEdits(carry, {}); alert("이월금이 저장되었습니다."); }} className="px-4 py-2.5 md:py-3 bg-[#802B22] text-white rounded-xl font-black text-xs md:text-sm active:scale-95 transition-transform shrink-0 shadow-sm hover:bg-[#6c231c]">저장</button>
+                                </div>
+                            </div>
+                            <div className="border-t border-gray-100 pt-4 w-full">
+                                <label className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-widest block mb-3 px-1">순예배 헌금 내역</label>
+                                <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1 md:pr-2 custom-scrollbar w-full">
+                                    {history.length === 0 && <div className="text-xs md:text-sm text-gray-400 font-bold text-center py-6">기록된 헌금 내역이 없습니다.</div>}
+                                    {history.map(h => (
+                                        <div key={h.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 w-full hover:bg-gray-100 transition-colors">
+                                            <span className="text-xs md:text-sm font-black text-gray-600 shrink-0">{h.date}</span>
+                                            <div className="flex items-center gap-2 text-right">
+                                                <span className="text-[10px] md:text-xs font-bold text-gray-400 hidden sm:inline">총액 ₩{(Number(h.offering)||0).toLocaleString()}</span>
+                                                <span className="hidden sm:inline text-gray-300">|</span>
+                                                <span className="text-sm md:text-base font-black text-[#802B22]">₩{Math.floor((Number(h.offering)||0)*0.4).toLocaleString()} <span className="text-[9px] md:text-[10px] text-[#802B22]/60 font-bold ml-0.5">(40%)</span></span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    <div className="lg:col-span-5 flex flex-col gap-6 lg:sticky lg:top-[100px] z-30">
+                        <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 flex flex-col gap-4">
+                            <div className="flex items-center gap-2 border-b border-gray-50 pb-3">
+                                <Icon name="bar-chart-2" className="w-5 h-5 text-[#802B22]" />
+                                <span className="font-black text-[#802B22] text-base">{currentYear}년 {currentHalf} 현황</span>
+                            </div>
+                            <div className="grid grid-cols-3 divide-x divide-gray-100">
+                                <div className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform hover:bg-blue-50 bg-blue-50/50 rounded-xl py-3 mx-1" onClick={onOpenDirectory}>
+                                    <span className="text-xs font-bold text-blue-500 uppercase mb-1.5 flex items-center gap-1"><Icon name="users" className="w-3.5 h-3.5"/> 참석순원</span>
+                                    <span className="font-black text-gray-800 text-xl md:text-2xl">{activeMembers.length}명</span>
+                                </div>
+                                <div className="flex flex-col items-center justify-center mx-1">
+                                    <span className="text-xs font-bold text-gray-400 uppercase mb-1.5">순예배</span>
+                                    <span className="font-black text-gray-800 text-xl md:text-2xl">{quarterStats.count}회</span>
+                                </div>
+                                <div className="flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform hover:bg-gray-100 bg-gray-50/50 rounded-xl py-3 mx-1" onClick={() => setFinanceEditMode(true)}>
+                                    <span className="text-xs font-bold text-[#802B22] uppercase mb-1.5 flex items-center gap-1"><Icon name="coins" className="w-3.5 h-3.5"/> 순헌금(40%)</span>
+                                    <span className="font-black text-gray-800 text-xl md:text-2xl">₩{cumulativeTotal.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Card className="p-4 md:p-6">
+                            <div className="flex justify-between items-center mb-3 md:mb-5">
+                                <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth()-1))} className="p-2 active:scale-90 hover:bg-gray-100 rounded-full"><Icon name="chevron-left" className="text-gray-500 w-5 h-5 md:w-6 md:h-6" /></button>
+                                <h3 className="font-black text-base md:text-xl">{currentMonth.getFullYear()}년 {currentMonth.getMonth()+1}월</h3>
+                                <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1))} className="p-2 active:scale-90 hover:bg-gray-100 rounded-full"><Icon name="chevron-right" className="text-gray-500 w-5 h-5 md:w-6 md:h-6" /></button>
+                            </div>
+                            <div className="calendar-grid mb-2 md:mb-3">{['일','월','화','수','목','금','토'].map(d => <div key={d} className="text-center text-[10px] md:text-xs font-black text-gray-400 uppercase">{d}</div>)}</div>
+                            <div className="calendar-grid">
+                                {daysInMonth.map((day, i) => {
+                                    if (!day) return <div key={`empty-${i}`} />;
+                                    const dStr = getLocalYYYYMMDD(day);
+                                    const record = recordDates.get(dStr);
+                                    const mmdd = `${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+                                    const bdayNames = birthdayMap.get(mmdd);
+                                    return (
+                                        <div key={dStr} onClick={() => record && handleDateClick(dStr)} className={`calendar-day${(record&&bdayNames)?' has-extra':''} py-1 md:py-2 ${record?'cursor-pointer text-[#802B22] hover:bg-red-50':bdayNames?'text-pink-500 hover:bg-pink-50':'text-gray-400'}`}>
+                                            <span className="text-sm md:text-lg leading-none flex items-center gap-0.5">{day.getDate()}{bdayNames && <span className="text-[9px] md:text-[11px] leading-none">🎂</span>}</span>
+                                            {record && (
+                                                <div className={`text-[8px] sm:text-[9px] md:text-[10px] font-black px-0.5 py-[2px] rounded-sm w-[95%] mx-auto text-center block leading-[1.2] break-keep ${record.type==='휴강'?'bg-gray-200 text-gray-600':record.type==='연합야유회'?'bg-yellow-200 text-yellow-800':record.type==='미실시'?'bg-orange-100 text-orange-600':record.type==='종강예배'?'bg-purple-200 text-purple-800':'bg-red-100 text-[#802B22]'}`}>
+                                                    {record.type==='순예배'||!record.type?'순예배':record.type}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Card>
+                    </div>
+
+                    <div className="lg:col-span-7 flex flex-col gap-6">
+                        {showAdd && (
+                            <Card className="border-t-4 border-[#802B22] p-4 md:p-6 fade-in">
+                                <h3 className="font-black text-lg mb-4 text-gray-800">새 예배 기록 추가</h3>
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex gap-2">
+                                        <input type="date" value={newRecord.date} onChange={e => setNewRecord({...newRecord, date: e.target.value})} className="w-1/2 p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-[#802B22]" />
+                                        <select value={newRecord.type} onChange={e => setNewRecord({...newRecord, type: e.target.value})} className="w-1/2 p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none text-gray-700 border border-gray-200 focus:border-[#802B22]">
+                                            {["순예배","휴강","종강예배","연합야유회","미실시"].map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="장소" value={newRecord.location} onChange={e => setNewRecord({...newRecord, location: e.target.value})} className="w-1/2 p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-[#802B22]" />
+                                        <input type="number" step="10000" placeholder="헌금액 (원)" value={newRecord.offering} onChange={e => setNewRecord({...newRecord, offering: e.target.value})} className="w-1/2 p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-[#802B22]" />
+                                    </div>
+                                    <textarea placeholder="특이사항" value={newRecord.notes} onChange={e => setNewRecord({...newRecord, notes: e.target.value})} className="w-full p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-[#802B22] min-h-[50px] resize-none" />
+                                    <div>
+                                        <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block px-1">참석 인원 ({newRecord.members.length}/{activeMembers.length})</span>
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            {activeMembers.map(m => (
+                                                <button key={m.id} onClick={() => setNewRecord(p => ({...p, members: p.members.includes(m.name)?p.members.filter(n=>n!==m.name):[...p.members,m.name]}))} className={`py-2 rounded-lg text-xs font-bold transition-all border-2 ${newRecord.members.includes(m.name)?'bg-[#802B22] border-[#802B22] text-white shadow-md':'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'}`}>{m.name}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <button onClick={() => { onAddRecord({...newRecord, offering: Number(newRecord.offering)||0}); setShowAdd(false); setNewRecord({date: getLocalYYYYMMDD(new Date()), type:"순예배", members:[], offering:"", location:"", notes:""}); }} className="w-full py-3.5 bg-[#802B22] text-white rounded-xl font-black text-sm shadow-md active:scale-95 hover:bg-[#6c231c]">저장하기</button>
+                                </div>
+                            </Card>
+                        )}
+
+                        {history.length === 0 && !showAdd && (
+                            <Card className="text-center py-16">
+                                <Icon name="calendar-x" className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                                <p className="text-gray-400 font-black text-base">아직 기록이 없습니다</p>
+                                <p className="text-gray-300 font-bold text-sm mt-1">위 + 버튼을 눌러 첫 순예배를 기록해보세요</p>
+                            </Card>
+                        )}
+
+                        {history.map(h => (
+                            <div key={h.id} ref={el => scrollRefs.current[h.date] = el}>
+                                <Card className="p-4 md:p-6 hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-black mb-2 ${h.type==='휴강'?'bg-gray-100 text-gray-600':h.type==='연합야유회'?'bg-yellow-100 text-yellow-800':h.type==='미실시'?'bg-orange-100 text-orange-600':h.type==='종강예배'?'bg-purple-100 text-purple-800':'bg-red-50 text-[#802B22]'}`}>{h.type||'순예배'}</span>
+                                            <h3 className="font-black text-base md:text-lg text-gray-800">{h.date}</h3>
+                                            {h.location && <p className="text-xs text-gray-400 font-bold mt-0.5 flex items-center gap-1"><Icon name="map-pin" className="w-3 h-3"/> {h.location}</p>}
+                                        </div>
+                                        <button onClick={() => executeWithAuth(() => setEditingRecord({...h}))} className="p-2 text-gray-400 hover:text-[#802B22] hover:bg-red-50 rounded-xl transition-colors active:scale-95"><Icon name="edit-3" className="w-4 h-4" /></button>
+                                    </div>
+                                    {h.offering > 0 && (
+                                        <div className="bg-red-50 rounded-xl px-4 py-2.5 mb-3 flex justify-between items-center border border-red-100">
+                                            <span className="text-xs font-black text-[#802B22]">헌금 (40%)</span>
+                                            <span className="font-black text-[#802B22]">₩{Math.floor(h.offering*0.4).toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    {h.members && h.members.length > 0 && (
+                                        <div className="mb-3">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">{h.members.length}명 참석</span>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {h.members.map(name => {
+                                                    const m = members.find(x => x.name === name);
+                                                    return (
+                                                        <button key={name} onClick={() => m?.prayer && setPrayerModal({name, prayer: m.prayer})} className={`px-2.5 py-1 rounded-lg text-xs font-black transition-colors ${m?.prayer?'bg-red-50 text-[#802B22] hover:bg-red-100':'bg-gray-100 text-gray-500'}`}>{name}</button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {h.notes && <p className="text-xs text-gray-500 font-bold bg-gray-50 p-3 rounded-xl leading-relaxed">{h.notes}</p>}
+                                </Card>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {editingRecord && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[999999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 fade-in pb-[90px]" onClick={() => setEditingRecord(null)}>
+                    <div className="w-full max-w-2xl mx-auto flex flex-col max-h-full shadow-2xl rounded-3xl bg-white" onClick={e=>e.stopPropagation()}>
+                        <Card className="border-t-8 border-[#802B22] relative p-4 md:p-6 flex flex-col overflow-hidden w-full max-h-[85vh]">
+                            <div className="flex justify-between items-center mb-3 shrink-0 pb-2 border-b border-gray-50">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setEditingRecord(null)} className="p-1 text-gray-400 active:scale-95 hover:bg-gray-100 rounded-full"><Icon name="chevron-left" className="w-6 h-6"/></button>
+                                    <h3 className="font-black text-lg md:text-xl text-gray-800">예배 기록 수정</h3>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => { executeWithAuth(() => { onDeleteRecord(editingRecord.id); setEditingRecord(null); }); }} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg font-black text-xs active:scale-95 hover:bg-red-100">삭제</button>
+                                    <button onClick={() => { executeWithAuth(() => { onUpdateRecord(editingRecord.id, editingRecord); setEditingRecord(null); }); }} className="px-4 py-1.5 bg-[#802B22] text-white rounded-lg font-black text-xs shadow-md active:scale-95 hover:bg-[#6c231c]">수정</button>
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-2 flex-1 pb-2">
+                                <div className="flex gap-2 w-full">
+                                    <input type="date" value={editingRecord.date} onChange={e => setEditingRecord({...editingRecord, date: e.target.value})} className="w-1/2 p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-[#802B22]" />
+                                    <select value={editingRecord.type||"순예배"} onChange={e => setEditingRecord({...editingRecord, type: e.target.value})} className="w-1/2 p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none text-gray-700 border border-gray-200 focus:border-[#802B22]">
+                                        {["순예배","휴강","종강예배","연합야유회","미실시"].map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                                <div className="flex gap-2 w-full">
+                                    <input type="text" placeholder="장소" value={editingRecord.location||""} onChange={e => setEditingRecord({...editingRecord, location: e.target.value})} className="w-1/2 p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-[#802B22]" />
+                                    <input type="number" step="10000" placeholder="헌금액 (원)" value={editingRecord.offering} onChange={e => setEditingRecord({...editingRecord, offering: e.target.value})} className="w-1/2 p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-[#802B22]" />
+                                </div>
+                                <textarea placeholder="특이사항" value={editingRecord.notes||""} onChange={e => setEditingRecord({...editingRecord, notes: e.target.value})} className="w-full p-2.5 bg-gray-50 rounded-xl font-bold text-sm outline-none border border-gray-200 focus:border-[#802B22] min-h-[60px] custom-scrollbar resize-none" />
+                                <div className="pt-1">
+                                    <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block px-1">참석 인원 ({editingRecord.members.length}/{activeMembers.length})</span>
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                        {activeMembers.map(m => (
+                                            <button key={m.id} onClick={() => setEditingRecord(prev => ({...prev, members: prev.members.includes(m.name)?prev.members.filter(n=>n!==m.name):[...prev.members,m.name]}))} className={`py-2 rounded-lg text-xs font-bold transition-all border-2 ${editingRecord.members.includes(m.name)?'bg-[#802B22] border-[#802B22] text-white shadow-md':'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'}`}>{m.name}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {prayerModal && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[999999] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setPrayerModal(null)}>
+                    <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl overflow-hidden" onClick={e=>e.stopPropagation()}>
+                        <div className="bg-[#802B22] px-6 py-5 flex items-center justify-between">
+                            <div>
+                                <div className="text-red-200 text-[10px] font-black uppercase tracking-widest mb-1">기도제목</div>
+                                <div className="text-white text-xl font-black">{prayerModal.name}</div>
+                            </div>
+                            <button onClick={() => setPrayerModal(null)} className="p-2 rounded-full bg-white/20 text-white active:scale-95 hover:bg-white/30"><Icon name="x" className="w-5 h-5"/></button>
+                        </div>
+                        <div className="px-6 py-5"><p className="text-gray-700 font-bold leading-relaxed whitespace-pre-wrap text-sm">{prayerModal.prayer}</p></div>
+                        <div className="px-6 pb-6"><button onClick={() => setPrayerModal(null)} className="w-full py-3 bg-[#802B22] text-white font-black rounded-2xl active:scale-95 hover:bg-[#6c231c]">닫기</button></div>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </div>
+    );
+};
+
+// ── 순예배주보 뷰 ──────────────────────────────────────────────
+const FullScreenImageViewer = ({ src, onClose }) => {
+    const [imgScale, setImgScale] = useState(1);
+    const [imgPos, setImgPos] = useState({ x:0, y:0 });
+    const pinchRef = useRef(null);
+    const lastPosRef = useRef(null);
+    const getDistance = (touches) => Math.hypot(touches[0].pageX-touches[1].pageX, touches[0].pageY-touches[1].pageY);
+    const handleTouchStart = (e) => {
+        if (e.touches.length===2) pinchRef.current = {dist: getDistance(e.touches), scale: imgScale};
+        else if (e.touches.length===1 && imgScale>1) lastPosRef.current = {x: e.touches[0].pageX-imgPos.x, y: e.touches[0].pageY-imgPos.y};
+    };
+    const handleTouchMove = (e) => {
+        e.preventDefault();
+        if (e.touches.length===2 && pinchRef.current) {
+            const newScale = Math.min(Math.max(1, pinchRef.current.scale*(getDistance(e.touches)/pinchRef.current.dist)), 5);
+            setImgScale(newScale);
+            if (newScale===1) setImgPos({x:0,y:0});
+        } else if (e.touches.length===1 && imgScale>1 && lastPosRef.current) {
+            setImgPos({x: e.touches[0].pageX-lastPosRef.current.x, y: e.touches[0].pageY-lastPosRef.current.y});
+        }
+    };
+    const handleTouchEnd = (e) => { if (e.touches.length<2) pinchRef.current=null; if (e.touches.length===0) lastPosRef.current=null; if (imgScale<=1) {setImgScale(1);setImgPos({x:0,y:0});} };
+    return (
+        <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center fade-in overflow-hidden" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClick={imgScale===1?onClose:undefined} style={{touchAction:'none'}}>
+            <img src={src} alt="크게 보기" draggable={false} style={{transform:`scale(${imgScale}) translate(${imgPos.x/imgScale}px,${imgPos.y/imgScale}px)`,transformOrigin:'center center',transition:pinchRef.current?'none':'transform .15s ease-out',maxWidth:'100vw',maxHeight:'100vh',objectFit:'contain',userSelect:'none',display:'block'}} />
+            <div className="absolute top-5 right-5 flex gap-2">
+                <button onClick={async(e)=>{e.stopPropagation();try{const r=await fetch(src);const b=await r.blob();const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='image_'+Date.now()+'.jpg';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);}catch{alert('길게 눌러 저장해주세요.');} }} className="bg-white/20 backdrop-blur-sm text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-white/30"><Icon name="download" className="w-5 h-5" /></button>
+                <button onClick={(e)=>{e.stopPropagation();onClose();}} className="bg-white/20 backdrop-blur-sm text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-white/30">✕</button>
+            </div>
+            {imgScale>1 && <button onClick={(e)=>{e.stopPropagation();setImgScale(1);setImgPos({x:0,y:0});}} className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-sm text-white text-xs font-black px-4 py-2 rounded-full hover:bg-white/30">원래 크기로</button>}
+        </div>
+    );
+};
+
+const BulletinRow = ({ label, children, align = "text-left" }) => (
+    <div className="flex items-baseline justify-between py-3 md:py-4 group">
+        <span className="font-black text-[#802B22] text-lg md:text-xl tracking-[0.2em] shrink-0 whitespace-nowrap">{label}</span>
+        <div className="flex-1 border-b-[3px] border-dotted border-gray-300 mx-3 md:mx-4 relative -top-1.5 opacity-50 group-hover:opacity-100 transition-opacity min-w-[20px]"></div>
+        <div className={`font-bold text-gray-800 text-lg md:text-xl break-words whitespace-pre-wrap max-w-[55%] sm:max-w-[65%] ${align}`}>{children}</div>
+    </div>
+);
+
+const WorshipGuideView = ({ guideData, onUpdateGuide }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [form, setForm] = useState(guideData);
+    const [fullScreenImage, setFullScreenImage] = useState(null);
+    const [fullScreenBible, setFullScreenBible] = useState(false);
+    const [uploadingSlot, setUploadingSlot] = useState(null);
+    const [pinchDist, setPinchDist] = useState(null);
+    const [textScale, setTextScale] = useState(1);
+
+    useEffect(() => { setForm(guideData); }, [guideData]);
+    useEffect(() => { if (!fullScreenBible) setTextScale(1); }, [fullScreenBible]);
+
+    // Firebase Storage로 이미지 업로드
+    const handleImageUpload = async (e, slot) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploadingSlot(slot);
+        const pathSlot = slot + 'Path'; // 스토리지 경로 저장용
+        try {
+            const { storage, ref, uploadBytes, getDownloadURL, deleteObject } = window.FB_SDK;
+            // 기존 이미지 삭제
+            const oldPath = form[pathSlot];
+            if (oldPath) { try { await deleteObject(ref(storage, oldPath)); } catch(_) {} }
+            // 이미지 압축 후 업로드
+            const compressed = await compressImage(file);
+            const blob = await (await fetch(compressed)).blob();
+            const path = `images/${slot}_${Date.now()}.jpg`;
+            const storageRef = ref(storage, path);
+            await uploadBytes(storageRef, blob);
+            const url = await getDownloadURL(storageRef);
+            setForm(prev => ({...prev, [slot]: url, [pathSlot]: path}));
+        } catch(err) {
+            console.error('이미지 업로드 실패:', err);
+            alert('이미지 업로드에 실패했습니다. Firebase Storage 규칙을 확인해주세요.');
+        } finally { setUploadingSlot(null); }
+    };
+
+    const save = () => { onUpdateGuide(form); setIsEditing(false); alert("예배 주보가 저장되었습니다."); };
+
+    const handleDeleteAdImage = async (slot) => {
+        const pathSlot = slot + 'Path';
+        const oldPath = form[pathSlot];
+        if (oldPath) { try { const { storage, ref, deleteObject } = window.FB_SDK; await deleteObject(ref(storage, oldPath)); } catch(_) {} }
+        const updated = {...form, [slot]:'', [pathSlot]:''};
+        setForm(updated);
+        await onUpdateGuide(updated);
+    };
+
+    const handleTouchStart = (e) => { if (e.touches.length===2) { const d=Math.hypot(e.touches[0].pageX-e.touches[1].pageX,e.touches[0].pageY-e.touches[1].pageY); setPinchDist(d); } };
+    const handleTouchMove = (e) => { if (e.touches.length===2&&pinchDist!==null) { const d=Math.hypot(e.touches[0].pageX-e.touches[1].pageX,e.touches[0].pageY-e.touches[1].pageY); setTextScale(prev=>Math.min(Math.max(.5,prev*(d/pinchDist)),5)); setPinchDist(d); } };
+    const handleTouchEnd = () => setPinchDist(null);
+
+    const copyToClipboard = (text) => { if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(()=>alert('복사됨: '+text)).catch(()=>fallbackCopy(text));}else{fallbackCopy(text);} };
+    const fallbackCopy = (text) => { const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.left="-999999px";document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');alert('복사됨: '+text);}catch{}document.body.removeChild(ta); };
+
+    const renderAnnouncements = (text) => {
+        if (!text) return "등록된 광고 및 일정이 없습니다.";
+        const regex = /(\d+(?:-\d+)+)/g;
+        return text.split(regex).map((part, i) => {
+            if (part.match(regex) && part.length >= 8) return <span key={i} onClick={() => copyToClipboard(part)} className="text-blue-600 underline underline-offset-4 cursor-pointer hover:text-blue-800">{part}</span>;
+            return <span key={i}>{part}</span>;
+        });
+    };
+
+    const UploadLabel = ({ slot, label, color = "blue" }) => {
+        const colorMap = {blue:'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100', orange:'bg-orange-50 text-orange-400 border-orange-200 hover:bg-orange-100', purple:'bg-purple-50 text-purple-500 border-purple-200 hover:bg-purple-100'};
+        const cls = colorMap[color] || colorMap.blue;
+        return (
+            <label className={`flex-1 p-3 rounded-xl font-black text-sm text-center border-2 border-dashed transition-colors ${uploadingSlot===slot?'bg-gray-100 text-gray-400 border-gray-200 cursor-wait':`${cls} cursor-pointer`}`}>
+                {uploadingSlot===slot ? <span className="flex items-center justify-center gap-1.5"><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>업로드 중...</span> : (form[slot]?`${label} 변경`:label+' 첨부')}
+                <input type="file" hidden accept="image/*" disabled={!!uploadingSlot} onChange={e=>handleImageUpload(e,slot)} />
+            </label>
+        );
+    };
+
+    return (
+        <div className="space-y-6 animate-slide-up pb-10">
+            <header className="flex justify-between items-center px-1">
+                <div><span className="text-[#802B22] font-black text-[10px] tracking-widest uppercase">Guide</span><h1 className="text-2xl font-black mt-1">순예배주보</h1></div>
+                {isEditing ? (
+                    <div className="flex gap-2">
+                        <button onClick={()=>{setIsEditing(false);setForm(guideData);}} className="px-4 py-2.5 rounded-xl text-sm font-black bg-gray-100 text-gray-600 hover:bg-gray-200">취소</button>
+                        <button onClick={save} className="px-5 py-2.5 rounded-xl text-sm font-black bg-[#802B22] text-white shadow-md hover:bg-[#6c231c]">저장하기</button>
+                    </div>
+                ) : (
+                    <button onClick={()=>setIsEditing(true)} className="p-2 md:p-2.5 text-[#802B22] bg-red-50 rounded-xl active:scale-95 transition-transform flex items-center justify-center hover:bg-red-100 shadow-sm"><Icon name="edit-3" className="w-4 h-4 md:w-5 md:h-5" /></button>
+                )}
+            </header>
+
+            {isEditing ? (
+                <div className="w-full">
+                    <label className={`flex flex-col items-center justify-center w-full h-28 rounded-2xl border-2 border-dashed transition-colors gap-2 ${uploadingSlot==='bannerImage'?'bg-gray-100 text-gray-400 border-gray-200 cursor-wait':'bg-purple-50 text-purple-500 border-purple-200 hover:bg-purple-100 cursor-pointer'}`}>
+                        {uploadingSlot==='bannerImage'?<span className="flex items-center gap-2 font-black text-sm"><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>업로드 중...</span>:<><Icon name="image" className="w-7 h-7" /><span className="font-black text-sm">{form.bannerImage?'교회 배너 변경':'교회 배너 첨부'}</span><span className="text-xs font-medium opacity-60">연간 1회 교체용 · 가로형 이미지 권장</span></>}
+                        <input type="file" hidden accept="image/*" disabled={!!uploadingSlot} onChange={e=>handleImageUpload(e,'bannerImage')} />
+                    </label>
+                    {form.bannerImage && <img src={form.bannerImage} className="mt-2 w-full rounded-xl object-cover max-h-28 border border-gray-200" />}
+                </div>
+            ) : (form.bannerImage && <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-gray-100"><img src={form.bannerImage} className="w-full object-cover" alt="교회 배너" /></div>)}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="lg:col-span-7 bulletin-border p-6 md:p-10 rounded-xl shadow-sm">
+                    <h3 className="text-2xl md:text-3xl font-black text-center text-[#802B22] mb-8 tracking-[0.3em]">순예배 순서</h3>
+                    <div className="space-y-1">
+                        {isEditing ? (
+                            <>
+                                <div className="py-4 border-b border-dashed border-gray-200">
+                                    <label className="font-black text-[#802B22] text-lg mb-2 block">순 P R S</label>
+                                    <input value={form.prsBible||""} onChange={e=>setForm({...form,prsBible:e.target.value})} placeholder="말씀 (예: 마 21:1~24:22)" className="w-full bg-white p-3 rounded-xl font-bold text-lg outline-none border border-gray-200 focus:border-[#802B22] mb-2"/>
+                                    <input value={form.prsLink||""} onChange={e=>setForm({...form,prsLink:e.target.value})} placeholder="유튜브 영상 링크" className="w-full bg-white p-3 rounded-xl font-bold text-lg outline-none border border-gray-200 focus:border-[#802B22]"/>
+                                </div>
+                                <div className="py-4 border-b border-dashed border-gray-200">
+                                    <label className="font-black text-[#802B22] text-lg mb-2 block">찬 양</label>
+                                    <div className="flex gap-2">
+                                        <UploadLabel slot="musicImage" label="악보1" color="blue" />
+                                        <UploadLabel slot="musicImage2" label="악보2" color="blue" />
+                                    </div>
+                                    {(form.musicImage||form.musicImage2) && <div className="flex gap-2 mt-2">{form.musicImage&&<img src={form.musicImage} className="w-1/2 aspect-video object-contain bg-gray-50 rounded-lg border border-gray-200"/>}{form.musicImage2&&<img src={form.musicImage2} className="w-1/2 aspect-video object-contain bg-gray-50 rounded-lg border border-gray-200"/>}</div>}
+                                </div>
+                                <div className="py-4 border-b border-dashed border-gray-200">
+                                    <label className="font-black text-[#802B22] text-lg mb-2 block">대 표 기 도</label>
+                                    <input value={form.prayerLeader||""} onChange={e=>setForm({...form,prayerLeader:e.target.value})} placeholder="대표기도자 이름" className="w-full bg-white p-3 rounded-xl font-bold text-lg outline-none border border-gray-200 focus:border-[#802B22]"/>
+                                </div>
+                                <div className="py-4 border-b border-dashed border-gray-200">
+                                    <label className="font-black text-[#802B22] text-lg mb-2 block">성 경 봉 독</label>
+                                    <input value={form.bibleVerse||""} onChange={e=>setForm({...form,bibleVerse:e.target.value})} placeholder="성경구절 (예: 마 22:15~22)" className="w-full bg-white p-3 rounded-xl font-bold text-lg outline-none border border-gray-200 focus:border-[#802B22] mb-2"/>
+                                    <textarea value={form.bibleContent||""} onChange={e=>setForm({...form,bibleContent:e.target.value})} placeholder="성경 본문 내용" className="w-full bg-white p-3 rounded-xl font-bold text-base outline-none border border-gray-200 focus:border-[#802B22] min-h-[100px] resize-none custom-scrollbar"/>
+                                </div>
+                                <div className="py-4 border-b border-dashed border-gray-200">
+                                    <label className="font-black text-[#802B22] text-lg mb-2 block">적 용 & 나 눔</label>
+                                    <input value={form.applicationText||""} onChange={e=>setForm({...form,applicationText:e.target.value})} placeholder="나눔 주제" className="w-full bg-white p-3 rounded-xl font-bold text-lg outline-none border border-gray-200 focus:border-[#802B22]"/>
+                                </div>
+                                <div className="py-4">
+                                    <label className="font-black text-[#802B22] text-lg mb-2 block">마 침 기 도</label>
+                                    <input value={form.closingPrayerLeader||""} onChange={e=>setForm({...form,closingPrayerLeader:e.target.value})} placeholder="마침기도자 이름" className="w-full bg-white p-3 rounded-xl font-bold text-lg outline-none border border-gray-200 focus:border-[#802B22]"/>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <BulletinRow label="순 P R S" align="text-right">
+                                    <div className="flex flex-col items-end gap-2">
+                                        <span>{form.prsBible||"말씀 미입력"}</span>
+                                        {form.prsLink && <button onClick={()=>window.open(form.prsLink,'_blank')} className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-sm bg-[#802B22]/10 text-[#802B22] hover:bg-[#802B22]/20 active:scale-95"><Icon name="play-circle" className="w-5 h-5"/> 영상 시청</button>}
+                                    </div>
+                                </BulletinRow>
+                                <div>
+                                    <BulletinRow label="찬 양" align="text-right">다 함 께</BulletinRow>
+                                    {(form.musicImage||form.musicImage2) && (
+                                        <div className="pl-0 md:pl-[120px] flex gap-3 mb-4 justify-end">
+                                            {form.musicImage && <div className="relative group rounded-xl border border-gray-200 shadow-sm w-1/2 aspect-video bg-gray-50 cursor-zoom-in hover:opacity-90 overflow-hidden" onClick={()=>setFullScreenImage(form.musicImage)}><img src={form.musicImage} className="w-full h-full object-contain"/></div>}
+                                            {form.musicImage2 && <div className="relative group rounded-xl border border-gray-200 shadow-sm w-1/2 aspect-video bg-gray-50 cursor-zoom-in hover:opacity-90 overflow-hidden" onClick={()=>setFullScreenImage(form.musicImage2)}><img src={form.musicImage2} className="w-full h-full object-contain"/></div>}
+                                        </div>
+                                    )}
+                                </div>
+                                <BulletinRow label="대 표 기 도" align="text-right">{form.prayerLeader||"-"}</BulletinRow>
+                                <div>
+                                    <BulletinRow label="성 경 봉 독" align="text-right">
+                                        <div className="flex flex-col items-end gap-2">
+                                            <span>{form.bibleVerse||"미입력"}</span>
+                                            {form.bibleContent && <button onClick={()=>setFullScreenBible(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-sm bg-[#802B22]/10 text-[#802B22] hover:bg-[#802B22]/20 active:scale-95"><Icon name="book-open" className="w-5 h-5"/> 성경 읽기</button>}
+                                        </div>
+                                    </BulletinRow>
+                                </div>
+                                <BulletinRow label="적 용 & 나 눔" align="text-right">{form.applicationText||"-"}</BulletinRow>
+                                <BulletinRow label="마 침 기 도" align="text-right">{form.closingPrayerLeader||"-"}</BulletinRow>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <div className="lg:col-span-5 flex flex-col gap-6">
+                    <Card>
+                        <h3 className="font-black text-xl text-[#802B22] mb-4 tracking-[0.2em]">광 고 / 일 정</h3>
+                        {isEditing ? (
+                            <>
+                                <textarea value={form.announcements||""} onChange={e=>setForm({...form,announcements:e.target.value})} placeholder="광고 내용 입력..." className="w-full bg-gray-50 p-4 rounded-2xl font-bold text-base outline-none border border-gray-200 focus:border-[#802B22] min-h-[120px] resize-none custom-scrollbar mb-4"/>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {form.adImage ? (
+                                        <div className="relative group rounded-xl border border-gray-200 shadow-sm aspect-video bg-gray-50 overflow-hidden">
+                                            <img src={form.adImage} className="w-full h-full object-contain"/>
+                                            <button onClick={()=>handleDeleteAdImage('adImage')} className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black hover:bg-red-600">✕</button>
+                                        </div>
+                                    ) : <UploadLabel slot="adImage" label="광고1" color="orange" />}
+                                    {form.adImage2 ? (
+                                        <div className="relative group rounded-xl border border-gray-200 shadow-sm aspect-video bg-gray-50 overflow-hidden">
+                                            <img src={form.adImage2} className="w-full h-full object-contain"/>
+                                            <button onClick={()=>handleDeleteAdImage('adImage2')} className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black hover:bg-red-600">✕</button>
+                                        </div>
+                                    ) : <UploadLabel slot="adImage2" label="광고2" color="orange" />}
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-lg md:text-xl text-gray-700 font-bold leading-[2.2] whitespace-pre-wrap px-2">{renderAnnouncements(form.announcements)}</div>
+                                {(form.adImage||form.adImage2) && (
+                                    <div className="flex gap-3 mt-5 pt-4 border-t border-gray-100">
+                                        {form.adImage && <div className="relative group flex-1 rounded-xl border border-gray-200 shadow-sm aspect-video bg-gray-50 cursor-zoom-in overflow-hidden" onClick={()=>setFullScreenImage(form.adImage)}><img src={form.adImage} className="w-full h-full object-contain"/></div>}
+                                        {form.adImage2 && <div className="relative group flex-1 rounded-xl border border-gray-200 shadow-sm aspect-video bg-gray-50 cursor-zoom-in overflow-hidden" onClick={()=>setFullScreenImage(form.adImage2)}><img src={form.adImage2} className="w-full h-full object-contain"/></div>}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </Card>
+                </div>
+            </div>
+
+            {fullScreenImage && ReactDOM.createPortal(<FullScreenImageViewer src={fullScreenImage} onClose={()=>setFullScreenImage(null)}/>, document.body)}
+            {fullScreenBible && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[99999] bg-white/95 backdrop-blur-md flex flex-col p-6 md:p-12 fade-in overflow-y-auto custom-scrollbar" onClick={()=>setFullScreenBible(false)} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+                    <div className="flex justify-between items-center mb-10 shrink-0 max-w-4xl mx-auto w-full">
+                        <span className="text-[#802B22] font-black tracking-[0.2em] uppercase text-sm border-b-2 border-[#802B22] pb-1">Scripture Reading</span>
+                        <button className="p-2 text-gray-400 hover:text-[#802B22] hover:bg-red-50 rounded-full"><Icon name="x" className="w-10 h-10" /></button>
+                    </div>
+                    <div className="mb-6 max-w-4xl mx-auto w-full"><h2 className="font-black text-[#802B22] leading-tight" style={{fontSize:`calc(1.25rem * ${textScale})`}}>{form.bibleVerse}</h2></div>
+                    <div className="flex-1 max-w-4xl mx-auto w-full"><p className="font-bold text-gray-800 leading-[2.2] whitespace-pre-wrap" style={{fontSize:`calc(1.125rem * ${textScale})`}}>{form.bibleContent}</p></div>
+                    <div className="mt-16 text-center text-gray-400 font-bold text-sm bg-gray-50 py-4 rounded-xl max-w-4xl mx-auto w-full">아무 곳이나 탭하면 화면이 닫힙니다.</div>
+                </div>,
+                document.body
+            )}
+        </div>
+    );
+};
+
+// ── 순기도제목 뷰 ──────────────────────────────────────────────
+const extractTags = (text, member) => {
+    if (!text) return [];
+    const tags = new Set();
+    const healthText = text.replace(/건강한\s*가정/g,'');
+    if (/건강|치료|수술|아픔|병원|항암|질병|질환|입원|투병/.test(healthText)) tags.add('건강');
+    if (/부모님|어머니|어머님|아버지|아버님|장인|장모|시어머니|시아버지|시댁|처가|친정|양가/.test(text)) tags.add('부모님');
+    if (/자녀|아들|딸|아이|임신|출산|육아|학업|학교|대학|수능|합격|공부|진로/.test(text)) tags.add('자녀');
+    if (member?.children) {
+        const childNames = member.children.replace(/\(.*?\)/g,'').split(/[\s,]+/).map(n=>n.trim()).filter(n=>n.length>0);
+        if (childNames.some(name=>text.includes(name))) tags.add('자녀');
+    }
+    if (/사역|사명|순장|봉사|전도|선교|임원|교사|목장|다락방/.test(text)) tags.add('교회/사역');
+    if (/직장|취업|이직|회사|면접|승진|업무|사업|매출|계약/.test(text)) tags.add('직장/사업');
+    if (/말씀|믿음|관계|갈등|마음|우울|평안|위로/.test(text)) tags.add('말씀/믿음');
+    if (/가정|남편|아내|부부|결혼|배우자|신앙|예배|교회|성령|은혜|기도/.test(text)) tags.add('가정/신앙');
+    return Array.from(tags).slice(0,4);
+};
+
+const PrayerCard = ({ m, onEditClick, forceExpand }) => {
+    const [isExpanded, setIsExpanded] = useState(true);
+    const tags = extractTags(m.prayer, m);
+    useEffect(() => { setIsExpanded(forceExpand); }, [forceExpand]);
+
+    const handleCopy = (e) => {
+        e.stopPropagation();
+        const text = `[${m.name}${m.role?' '+m.role:''}]\n${m.prayer||''}`;
+        navigator.clipboard?.writeText(text).then(()=>alert('복사되었습니다.')).catch(()=>{
+            const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-999999px';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');alert('복사되었습니다.');}catch{}document.body.removeChild(ta);
+        });
+    };
+
+    return (
+        <Card className="break-inside-avoid hover:shadow-md transition-shadow p-5">
+            <div className="flex justify-between items-start mb-2 cursor-pointer" onClick={()=>setIsExpanded(!isExpanded)}>
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm shrink-0 ${m.gender==='M'?'bg-blue-100 text-blue-700':'bg-pink-100 text-pink-700'}`}>{m.name.slice(-1)}</div>
+                    <div className="min-w-0">
+                        <div className="font-black text-gray-900 text-base truncate">{m.name}<span className="text-gray-400 font-bold text-xs ml-2">{m.role}</span></div>
+                        {m.birthday && <div className="text-pink-400 text-xs font-bold">🎂 {m.birthday}</div>}
+                    </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <button onClick={handleCopy} className="p-1.5 text-gray-300 hover:text-[#802B22] rounded-lg hover:bg-red-50 transition-colors"><Icon name="copy" className="w-3.5 h-3.5"/></button>
+                    <button onClick={e=>{e.stopPropagation();onEditClick(m);}} className="p-1.5 text-gray-300 hover:text-[#802B22] rounded-lg hover:bg-red-50 transition-colors"><Icon name="edit-3" className="w-3.5 h-3.5"/></button>
+                    <Icon name={isExpanded?"chevron-up":"chevron-down"} className="w-4 h-4 text-gray-300"/>
+                </div>
+            </div>
+            {tags.length>0 && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                    {tags.map(tag => <span key={tag} className="px-2 py-0.5 bg-[#802B22]/8 text-[#802B22] text-[10px] font-black rounded-full">#{tag}</span>)}
+                </div>
+            )}
+            {isExpanded && (
+                <div className="mt-2 border-t border-gray-50 pt-3">
+                    {m.prayer ? (
+                        <div className="space-y-1.5">
+                            {m.prayer.split('\n').map((line,idx) => {
+                                const match = line.match(/^(\d+\.)\s*(.*)/);
+                                if (match) return <div key={idx} className="flex gap-2 items-start"><span className="text-[#802B22] font-black shrink-0 leading-[1.7]">{match[1]}</span><span className="text-gray-700 leading-[1.7] break-words">{match[2]}</span></div>;
+                                return <div key={idx} className="text-gray-700 leading-[1.7] break-words">{line}</div>;
+                            })}
+                        </div>
+                    ) : <p className="text-sm text-gray-400 font-bold italic py-2">등록된 순기도제목이 없습니다.</p>}
+                </div>
+            )}
+        </Card>
+    );
+};
+
+const PrayerListView = ({ members, onUpdate }) => {
+    const activeMembers = useMemo(() => members.filter(m=>m.isParticipating&&m.name.trim()!==''), [members]);
+    const [shuffledIds, setShuffledIds] = useState([]);
+    useEffect(()=>{ const ids=activeMembers.map(m=>m.id); ids.sort(()=>Math.random()-.5); setShuffledIds(ids); }, [activeMembers.length]);
+    const displayMembers = useMemo(()=>{ if(shuffledIds.length===0)return activeMembers; const byId={}; activeMembers.forEach(m=>{byId[m.id]=m;}); return shuffledIds.map(id=>byId[id]).filter(Boolean); }, [activeMembers,shuffledIds]);
+    const allTags = useMemo(()=>{ const tags=new Set(); activeMembers.forEach(m=>extractTags(m.prayer,m).forEach(t=>tags.add(t))); return Array.from(tags); }, [activeMembers]);
+    const [selectedTag, setSelectedTag] = useState(null);
+    const [isAllExpanded, setIsAllExpanded] = useState(true);
+    const [editingMember, setEditingMember] = useState(null);
+    const [editDraft, setEditDraft] = useState("");
+    const filteredMembers = useMemo(()=>{
+        if(selectedTag==='가나다순') return [...activeMembers].sort((a,b)=>a.name.localeCompare(b.name));
+        if(!selectedTag) return displayMembers;
+        return displayMembers.filter(m=>extractTags(m.prayer,m).includes(selectedTag));
+    }, [displayMembers,activeMembers,selectedTag]);
+
+    const openEdit = (m) => { setEditingMember(m); setEditDraft(m.prayer||""); };
+    const closeEdit = () => { setEditingMember(null); setEditDraft(""); };
+    const handleSavePrayer = () => { onUpdate(editingMember.id, editDraft); closeEdit(); };
+
+    const handleShareAll = async () => {
+        const groupName = window.SOON_CONFIG?.groupName || '우리 순';
+        const prayers = activeMembers.filter(m=>m.prayer&&m.prayer.trim()!=='').sort((a,b)=>(a.order||99)-(b.order||99));
+        let text = `★${groupName} 기도제목★\n\n`;
+        prayers.forEach(m => { text += `[${m.name} ${m.role||''}]\n${m.prayer}\n\n`; });
+        const copyText = async () => {
+            if(navigator.clipboard&&window.isSecureContext){try{await navigator.clipboard.writeText(text);return true;}catch{}}
+            const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-999999px';document.body.appendChild(ta);ta.focus();ta.select();
+            try{document.execCommand('copy');document.body.removeChild(ta);return true;}catch{document.body.removeChild(ta);return false;}
+        };
+        const copied = await copyText();
+        if(navigator.share){try{await navigator.share({text});return;}catch{}}
+        if(copied) alert('전체 기도제목이 복사되었습니다.');
+    };
+
+    return (
+        <div className="space-y-6 animate-slide-up pb-6">
+            <header className="px-1 flex justify-between items-end">
+                <div><span className="text-[#802B22] font-black text-[10px] tracking-widest uppercase">PRAYER REQUEST</span><h1 className="text-2xl font-black mt-1">순기도제목</h1></div>
+            </header>
+            <div className="flex flex-wrap gap-2.5 px-1">
+                <button onClick={()=>setSelectedTag(null)} className={`px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm ${!selectedTag?'bg-gray-800 text-white':'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>전체보기</button>
+                <button onClick={()=>setSelectedTag('가나다순')} className={`px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm ${selectedTag==='가나다순'?'bg-gray-800 text-white':'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>#가나다순</button>
+                {allTags.map(tag => <button key={tag} onClick={()=>setSelectedTag(selectedTag===tag?null:tag)} className={`px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm ${selectedTag===tag?'bg-gray-800 text-white':'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>#{tag}</button>)}
+            </div>
+            <div className="flex justify-between items-center px-1">
+                <button onClick={handleShareAll} className="flex items-center gap-1.5 text-[12px] font-black text-gray-500 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-gray-100 hover:bg-gray-50 active:scale-95">
+                    <Icon name="share-2" className="w-3.5 h-3.5 text-[#802B22]"/> 공유 ({activeMembers.filter(m=>m.prayer).length})
+                </button>
+                <button onClick={()=>setIsAllExpanded(!isAllExpanded)} className="text-sm font-black text-[#802B22] flex items-center gap-1.5 bg-red-50 px-4 py-2 rounded-xl active:scale-95 transition-transform shadow-sm hover:bg-red-100 border border-red-100">
+                    <Icon name={isAllExpanded?"chevrons-up":"chevrons-down"} className="w-4 h-4"/>
+                    {isAllExpanded?"모두 접기":"모두 펼치기"}
+                </button>
+            </div>
+            {activeMembers.length === 0 && (
+                <Card className="text-center py-16">
+                    <Icon name="users" className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                    <p className="text-gray-400 font-black text-base">순원 명단이 비어있습니다</p>
+                    <p className="text-gray-300 font-bold text-sm mt-1">하단 탭 → 순예배기록 → 참석순원을 눌러 순원을 추가해주세요</p>
+                </Card>
+            )}
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 w-full mt-4">
+                {filteredMembers.length===0&&activeMembers.length>0&&<div className="text-center py-12 text-gray-400 font-bold text-base w-full block col-span-full">해당되는 기도제목이 없습니다.</div>}
+                {filteredMembers.map(m => <div key={m.id} className="break-inside-avoid mb-6 w-full block"><PrayerCard m={m} onEditClick={openEdit} forceExpand={isAllExpanded}/></div>)}
+            </div>
+            {editingMember && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[99999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 fade-in pb-[90px]" onClick={closeEdit}>
+                    <div className="w-full max-w-2xl mx-auto flex flex-col max-h-full shadow-2xl rounded-3xl bg-white" onClick={e=>e.stopPropagation()}>
+                        <Card className="border-t-8 border-[#802B22] fade-in p-5 md:p-8 flex flex-col overflow-hidden w-full max-h-[85vh]">
+                            <div className="flex justify-between items-center mb-6 shrink-0">
+                                <div><span className="text-[#802B22] font-black text-[10px] tracking-widest uppercase block mb-1">PRAYER EDIT</span><h3 className="font-black text-xl md:text-2xl">{editingMember.name} {editingMember.role} 기도제목 수정</h3></div>
+                                <button onClick={closeEdit} className="p-2 text-gray-400 active:scale-95 hover:bg-gray-100 rounded-full"><Icon name="x" className="w-6 h-6"/></button>
+                            </div>
+                            <div className="space-y-4 overflow-y-auto custom-scrollbar pr-2 flex-1 pb-4">
+                                <textarea value={editDraft} onChange={e=>setEditDraft(e.target.value)} placeholder="순기도제목을 상세히 입력하세요..." className="w-full bg-gray-50 p-5 rounded-2xl border border-gray-200 text-[15px] md:text-base font-bold outline-none focus:border-[#802B22] min-h-[250px] resize-none text-gray-800 custom-scrollbar leading-relaxed" autoFocus/>
+                            </div>
+                            <div className="flex gap-3 pt-4 border-t border-gray-100 mt-2 shrink-0">
+                                <button onClick={closeEdit} className="w-1/3 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg active:scale-95 hover:bg-gray-200">취소</button>
+                                <button onClick={handleSavePrayer} className="w-2/3 py-4 bg-[#802B22] text-white rounded-2xl font-black text-lg shadow-lg active:scale-95 hover:bg-[#6c231c]">저장 완료</button>
+                            </div>
+                        </Card>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </div>
+    );
+};
+
+// ── 순원 명단 모달 ──────────────────────────────────────────────
+const MobileDirectoryCard = ({ family, isAdmin, draft, onChange, onDelete }) => {
+    if (isAdmin && draft) {
+        return (
+            <div className="bg-blue-50/20 p-4 rounded-xl border border-blue-200 flex flex-col gap-3 shadow-sm">
+                <div className="flex flex-col gap-3">
+                    <div className="bg-white p-3 rounded-lg border border-blue-100">
+                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5 block">남편</span>
+                        <div className="flex gap-2 mb-2 w-full">
+                            <input className="w-1/2 min-w-0 flex-1 p-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold" value={draft.hName} onChange={e=>onChange({...draft,hName:e.target.value})} placeholder="이름"/>
+                            <input className="w-1/2 min-w-0 flex-1 p-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold" value={draft.hRole} onChange={e=>onChange({...draft,hRole:e.target.value})} placeholder="직분"/>
+                        </div>
+                        <input className="w-full p-2 border border-pink-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold mb-2" value={draft.hBirthday||''} onChange={e=>onChange({...draft,hBirthday:e.target.value})} placeholder="🎂 생일 MM-DD"/>
+                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={draft.hPart} onChange={e=>onChange({...draft,hPart:e.target.checked})} className="rounded cursor-pointer w-4 h-4"/><span className="text-xs font-bold text-gray-700">순예배 참여</span></label>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-pink-100">
+                        <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest mb-1.5 block">아내</span>
+                        <div className="flex gap-2 mb-2 w-full">
+                            <input className="w-1/2 min-w-0 flex-1 p-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold" value={draft.wName} onChange={e=>onChange({...draft,wName:e.target.value})} placeholder="이름"/>
+                            <input className="w-1/2 min-w-0 flex-1 p-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold" value={draft.wRole} onChange={e=>onChange({...draft,wRole:e.target.value})} placeholder="직분"/>
+                        </div>
+                        <input className="w-full p-2 border border-pink-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold mb-2" value={draft.wBirthday||''} onChange={e=>onChange({...draft,wBirthday:e.target.value})} placeholder="🎂 생일 MM-DD"/>
+                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={draft.wPart} onChange={e=>onChange({...draft,wPart:e.target.checked})} className="rounded cursor-pointer w-4 h-4"/><span className="text-xs font-bold text-gray-700">순예배 참여</span></label>
+                    </div>
+                    <div className="flex gap-2">
+                        <input className="flex-1 min-w-0 p-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold" value={draft.children} onChange={e=>onChange({...draft,children:e.target.value})} placeholder="자녀 정보"/>
+                        <input className="flex-1 min-w-0 p-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold" value={draft.vehicle} onChange={e=>onChange({...draft,vehicle:e.target.value})} placeholder="차량 번호"/>
+                    </div>
+                    <button onClick={onDelete} className="w-full px-4 py-2.5 bg-white text-red-600 text-xs font-black rounded-xl active:scale-95 shadow-sm hover:bg-red-50 border border-red-200">이 가족 삭제</button>
+                </div>
+            </div>
+        );
+    }
+    const husband = family.husband || {};
+    const wife = family.wife || {};
+    return (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+            {[{member:husband,color:'blue'},{member:wife,color:'pink'}].map(({member,color})=>member.name?(
+                <div key={member.id} className={`flex items-start gap-3 p-3 rounded-lg bg-${color}-50/30`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${color==='blue'?'bg-blue-100 text-blue-700':'bg-pink-100 text-pink-700'}`}>{member.name.slice(-1)}</div>
+                    <div className="flex-1 min-w-0">
+                        <div className="font-black text-gray-800">{member.name} <span className="text-gray-400 font-bold text-xs">{member.role}</span></div>
+                        {member.birthday && <div className="text-pink-400 text-xs font-bold">🎂 {member.birthday}</div>}
+                        <div className={`text-xs font-bold mt-0.5 ${member.isParticipating?'text-[#802B22]':'text-gray-400'}`}>{member.isParticipating?'순예배 참여':'미참여'}</div>
+                    </div>
+                </div>
+            ):null)}
+            {family.children && <div className="text-sm font-bold text-gray-600 px-1">👶 {family.children}</div>}
+            {family.vehicle && <div className="text-sm font-black text-[#802B22] px-1">🚗 {family.vehicle}</div>}
+        </div>
+    );
+};
+
+const DirectoryModal = ({ members, onClose, onGlobalSave, onAddFamily, onDeleteFamily, adminPass, onChangeAdminPass, isGlobalAdmin, onRequestAdmin }) => {
+    const groupedFamilies = useMemo(() => {
+        const familyMap = {};
+        members.forEach(m => {
+            const fid = m.familyId || m.id;
+            if (!familyMap[fid]) familyMap[fid] = {id:fid, husband:null, wife:null, children:'', vehicle:''};
+            if (m.gender==='M') familyMap[fid].husband = m;
+            else familyMap[fid].wife = m;
+            if (m.children) familyMap[fid].children = m.children;
+            if (m.vehicle) familyMap[fid].vehicle = m.vehicle;
+        });
+        return Object.values(familyMap).sort((a,b)=>(a.husband?.order||a.wife?.order||99)-(b.husband?.order||b.wife?.order||99));
+    }, [members]);
+
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [drafts, setDrafts] = useState({});
+    const [hasChanges, setHasChanges] = useState(false);
+    const [showChangePwd, setShowChangePwd] = useState(false);
+    const [newPwd, setNewPwd] = useState('');
+
+    useEffect(()=>{
+        const d={};
+        groupedFamilies.forEach(f=>{
+            d[f.id]={hName:f.husband?.name||'',hRole:f.husband?.role||'',hPart:f.husband?.isParticipating||false,hBirthday:f.husband?.birthday||'',wName:f.wife?.name||'',wRole:f.wife?.role||'',wPart:f.wife?.isParticipating||false,wBirthday:f.wife?.birthday||'',children:f.children||'',vehicle:f.vehicle||''};
+        });
+        setDrafts(d);
+    }, [groupedFamilies.length]);
+
+    const executeGlobalSave = (withAlert) => {
+        const action = () => { onGlobalSave(groupedFamilies, drafts); setIsAdmin(false); setHasChanges(false); if(withAlert) alert('저장되었습니다.'); };
+        if(isGlobalAdmin){action();}else{onRequestAdmin(action);}
+    };
+
+    const handleCopyVehicles = () => {
+        const lines = groupedFamilies.filter(f=>f.vehicle).map(f=>`${f.husband?.name||f.wife?.name||'?'} : ${f.vehicle}`);
+        const text = lines.join('\n');
+        navigator.clipboard?.writeText(text).then(()=>alert('차량정보 복사됨')).catch(()=>{const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-999999px';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy');alert('차량정보 복사됨');}catch{}document.body.removeChild(ta);});
+    };
+
+    const handleChangePwd = () => { if(newPwd.trim()){onChangeAdminPass(newPwd.trim());setShowChangePwd(false);setNewPwd('');alert('비밀번호가 변경되었습니다.');} };
+
+    // 설정 초기화 (관리자만)
+    const handleResetConfig = () => {
+        if(confirm('설정을 초기화하면 설정 마법사가 다시 실행됩니다. 계속하시겠습니까?')) {
+            localStorage.removeItem('soon-config');
+            window.location.reload();
+        }
+    };
+
+    return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] bg-white flex flex-col fade-in">
+            <header className="bg-white border-b border-gray-100 shadow-sm flex items-center justify-between px-4 md:px-6 py-3.5 shrink-0">
+                <div className="flex items-center gap-3">
+                    <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full active:scale-95"><Icon name="x" className="w-5 h-5"/></button>
+                    <h2 className="font-black text-lg md:text-xl text-gray-800">순원 명단</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                    {isAdmin ? (
+                        <>
+                            <button onClick={()=>{setShowChangePwd(true);}} className="hidden sm:flex px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-black rounded-lg active:scale-95 hover:bg-gray-200 items-center gap-1.5"><Icon name="key" className="w-3.5 h-3.5"/> 비밀번호 변경</button>
+                            <button onClick={()=>{onAddFamily();}} className="px-3 md:px-4 py-2 bg-gray-800 text-white text-xs font-black rounded-lg active:scale-95 hover:bg-gray-900">새 가족 추가</button>
+                            <button onClick={()=>executeGlobalSave(true)} className="px-3 md:px-4 py-2 bg-[#802B22] text-white text-sm font-black rounded-lg active:scale-95 shadow-md flex items-center gap-1.5 hover:bg-[#6c231c]"><Icon name="save" className="w-4 h-4"/>업데이트 저장</button>
+                        </>
+                    ) : (
+                        <button onClick={()=>{if(isGlobalAdmin){setIsAdmin(true);}else{onRequestAdmin(()=>setIsAdmin(true));}}} className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-black rounded-lg active:scale-95 flex items-center gap-1.5 hover:bg-gray-50 shadow-sm"><Icon name="lock" className="w-4 h-4"/> 관리자 편집</button>
+                    )}
+                </div>
+            </header>
+
+            <div className="flex-1 overflow-auto p-4 md:p-6 safe-bottom flex flex-col items-center custom-scrollbar">
+                <div className="w-full max-w-6xl">
+                    {isAdmin && (
+                        <div className="bg-red-50 border border-red-100 p-4 rounded-xl mb-4 text-sm text-red-600 font-bold leading-relaxed shadow-sm flex flex-wrap justify-between items-center gap-2">
+                            <span>💡 관리자 편집 모드. 변경 후 <strong>[업데이트 저장]</strong>을 눌러주세요.</span>
+                            <div className="flex gap-2">
+                                <button onClick={()=>setShowChangePwd(true)} className="sm:hidden px-3 py-1.5 bg-white text-gray-600 text-xs font-black rounded-md border border-red-200 active:scale-95">비번변경</button>
+                                {isGlobalAdmin && <button onClick={handleResetConfig} className="px-3 py-1.5 bg-white text-orange-600 text-xs font-black rounded-md border border-orange-200 active:scale-95">⚙️ 설정 초기화</button>}
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex justify-end mb-3 px-1">
+                        <button onClick={handleCopyVehicles} className="flex items-center gap-1.5 text-[12px] font-black text-gray-500 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-gray-100 hover:bg-gray-50 active:scale-95">
+                            <Icon name="copy" className="w-3.5 h-3.5 text-[#802B22]"/> 차량정보 복사
+                        </button>
+                    </div>
+                    <div className="md:hidden flex flex-col gap-4">
+                        {groupedFamilies.map(f=><MobileDirectoryCard key={f.id} family={f} isAdmin={isAdmin} draft={drafts[f.id]} onChange={(d)=>{setDrafts(p=>({...p,[f.id]:d}));setHasChanges(true);}} onDelete={()=>onDeleteFamily(f.id)}/>)}
+                    </div>
+                    <div className="hidden md:block w-full overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white custom-scrollbar">
+                        <table className="w-full min-w-[900px] text-base text-left">
+                            <thead className="bg-gray-50 text-gray-500 font-black text-xs uppercase tracking-widest">
+                                <tr>
+                                    <th className="py-4 px-6 border-b border-gray-200 w-[22%]">남편</th>
+                                    <th className="py-4 px-6 border-b border-gray-200 w-[22%]">아내</th>
+                                    <th className="py-4 px-6 border-b border-gray-200 w-[25%]">자녀 정보</th>
+                                    <th className="py-4 px-6 border-b border-gray-200 w-[20%]">차량 번호</th>
+                                    {isAdmin && <th className="py-4 px-6 border-b border-gray-200 text-center w-[11%]">관리</th>}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {groupedFamilies.map(f=>{
+                                    const draft = drafts[f.id];
+                                    const husband = f.husband||{};
+                                    const wife = f.wife||{};
+                                    if (isAdmin && draft) {
+                                        return (
+                                            <tr key={f.id} className="bg-blue-50/10 hover:bg-blue-50/30">
+                                                <td className="py-4 px-6 border-r border-gray-100 bg-blue-50/20">
+                                                    <div className="flex gap-2 w-full mb-2"><input className="w-3/5 p-2.5 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm" value={draft.hName} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,hName:e.target.value}}));setHasChanges(true);}} placeholder="이름"/><input className="w-2/5 p-2.5 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm" value={draft.hRole} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,hRole:e.target.value}}));setHasChanges(true);}} placeholder="직분"/></div>
+                                                    <input className="w-full p-2 bg-white border border-pink-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm mb-2" value={draft.hBirthday||''} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,hBirthday:e.target.value}}));setHasChanges(true);}} placeholder="🎂 생일 MM-DD"/>
+                                                    <label className="flex items-center gap-2 cursor-pointer mt-2 pl-1"><input type="checkbox" checked={draft.hPart} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,hPart:e.target.checked}}));setHasChanges(true);}} className="rounded cursor-pointer w-4 h-4"/><span className="text-xs font-bold text-gray-700">순예배 참여</span></label>
+                                                </td>
+                                                <td className="py-4 px-6 border-r border-gray-100 bg-blue-50/20">
+                                                    <div className="flex gap-2 w-full mb-2"><input className="w-3/5 p-2.5 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm" value={draft.wName} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,wName:e.target.value}}));setHasChanges(true);}} placeholder="이름"/><input className="w-2/5 p-2.5 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm" value={draft.wRole} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,wRole:e.target.value}}));setHasChanges(true);}} placeholder="직분"/></div>
+                                                    <input className="w-full p-2 bg-white border border-pink-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm mb-2" value={draft.wBirthday||''} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,wBirthday:e.target.value}}));setHasChanges(true);}} placeholder="🎂 생일 MM-DD"/>
+                                                    <label className="flex items-center gap-2 cursor-pointer mt-2 pl-1"><input type="checkbox" checked={draft.wPart} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,wPart:e.target.checked}}));setHasChanges(true);}} className="rounded cursor-pointer w-4 h-4"/><span className="text-xs font-bold text-gray-700">순예배 참여</span></label>
+                                                </td>
+                                                <td className="py-4 px-6 border-r border-gray-100 bg-blue-50/20"><input className="w-full p-2.5 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm" value={draft.children} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,children:e.target.value}}));setHasChanges(true);}} placeholder="자녀 정보"/></td>
+                                                <td className="py-4 px-6 border-r border-gray-100 bg-blue-50/20"><input className="w-full p-2.5 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm" value={draft.vehicle} onChange={e=>{setDrafts(p=>({...p,[f.id]:{...draft,vehicle:e.target.value}}));setHasChanges(true);}} placeholder="차량 번호"/></td>
+                                                <td className="py-4 px-6 text-center bg-blue-50/20"><button onClick={()=>onDeleteFamily(f.id)} className="px-4 py-2.5 bg-white text-red-600 text-xs font-black rounded-xl active:scale-95 w-full shadow-sm hover:bg-red-50 border border-red-200">삭제</button></td>
+                                            </tr>
+                                        );
+                                    }
+                                    return (
+                                        <tr key={f.id} className="hover:bg-gray-50">
+                                            <td className={`py-5 px-6 border-r border-gray-100 ${!husband.isParticipating?'opacity-40':''}`}>
+                                                {husband.name?<div className="flex flex-col gap-1"><div className="font-black text-gray-800 text-lg">{husband.name} <span className="font-bold text-gray-400 text-sm ml-1.5">{husband.role}</span></div>{husband.birthday&&<div className="text-xs text-pink-400 font-bold">🎂 {husband.birthday}</div>}<div className="flex items-center gap-1.5 mt-1"><Icon name={husband.isParticipating?"check-circle":"circle"} className={`w-4 h-4 ${husband.isParticipating?'text-[#802B22]':'text-gray-300'}`}/><span className="text-xs font-bold text-gray-500">{husband.isParticipating?'순예배 참여':'미참여'}</span></div></div>:<span className="text-gray-300 font-bold">-</span>}
+                                            </td>
+                                            <td className={`py-5 px-6 border-r border-gray-100 ${!wife.isParticipating?'opacity-40':''}`}>
+                                                {wife.name?<div className="flex flex-col gap-1"><div className="font-black text-gray-800 text-lg">{wife.name} <span className="font-bold text-gray-400 text-sm ml-1.5">{wife.role}</span></div>{wife.birthday&&<div className="text-xs text-pink-400 font-bold">🎂 {wife.birthday}</div>}<div className="flex items-center gap-1.5 mt-1"><Icon name={wife.isParticipating?"check-circle":"circle"} className={`w-4 h-4 ${wife.isParticipating?'text-[#802B22]':'text-gray-300'}`}/><span className="text-xs font-bold text-gray-500">{wife.isParticipating?'순예배 참여':'미참여'}</span></div></div>:<span className="text-gray-300 font-bold">-</span>}
+                                            </td>
+                                            <td className="py-5 px-6 border-r border-gray-100"><span className="text-base font-bold text-gray-700 leading-snug break-keep">{f.children||'-'}</span></td>
+                                            <td className="py-5 px-6 border-r border-gray-100"><span className="text-base font-black text-[#802B22] break-keep">{f.vehicle||'-'}</span></td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {showChangePwd && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[200] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 fade-in" onClick={()=>setShowChangePwd(false)}>
+                    <div className="bg-white p-8 rounded-[2rem] w-full max-w-sm shadow-2xl border border-gray-100 text-center" onClick={e=>e.stopPropagation()}>
+                        <h3 className="text-2xl font-black text-gray-800 mb-6">새 비밀번호 설정</h3>
+                        <input type="text" value={newPwd} onChange={e=>setNewPwd(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')handleChangePwd();}} className="w-full p-4 bg-[#F3F4F6] border border-transparent rounded-2xl font-black text-center text-lg mb-6 outline-none focus:border-[#802B22]" placeholder="새로운 비밀번호 입력"/>
+                        <div className="flex gap-3 mt-2">
+                            <button onClick={()=>setShowChangePwd(false)} className="flex-1 py-4 text-gray-500 text-lg font-black rounded-2xl active:scale-95 hover:bg-gray-50">취소</button>
+                            <button onClick={handleChangePwd} className="flex-1 py-4 bg-[#802B22] text-white text-lg font-black rounded-2xl active:scale-95 shadow-md hover:bg-[#6c231c]">변경 완료</button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </div>,
+        document.body
+    );
+};
+
+// ═══════════════════════════════════════════════
+//  메인 앱 (설정 로드 후 표시)
+// ═══════════════════════════════════════════════
+const MainApp = () => {
+    const [ready, setReady] = useState(false);
+    const [view, setView] = useState('prayer');
+    const [showDirectory, setShowDirectory] = useState(false);
+    const [members, setMembers] = useState([]);
+    const [history, setHistory] = useState([]);
+    const [finance, setFinance] = useState({ carryOver: 0 });
+    const [adminPass, setAdminPass] = useState("1234");
+    const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+    const [showGlobalAuth, setShowGlobalAuth] = useState(false);
+    const [globalAuthInput, setGlobalAuthInput] = useState('');
+    const [globalAuthError, setGlobalAuthError] = useState('');
+    const [pendingGlobalAction, setPendingGlobalAction] = useState(null);
+    const [showNav, setShowNav] = useState(true);
+    const [guideData, setGuideData] = useState({
+        prayerLeader: "순장",
+        closingPrayerLeader: "",
+        announcements: "",
+        applicationText: "실천할 일을 결단하고 나누기",
+        bibleVerse: "",
+        bibleContent: "",
+        prsBible: "",
+        prsLink: "",
+        musicImage: null,
+        musicImage2: null
+    });
+
+    const groupName = window.SOON_CONFIG?.groupName || '순 매니저';
+
+    const requestAdmin = (action) => {
+        if (isGlobalAdmin) { action(); }
+        else { setPendingGlobalAction(()=>action); setShowGlobalAuth(true); }
+    };
+    const handleGlobalAuthConfirm = () => {
+        if (globalAuthInput === adminPass) {
+            setIsGlobalAdmin(true); setShowGlobalAuth(false); setGlobalAuthInput(''); setGlobalAuthError('');
+            if (pendingGlobalAction) { pendingGlobalAction(); setPendingGlobalAction(null); }
+        } else { setGlobalAuthError('비밀번호가 일치하지 않습니다.'); }
+    };
+    const logoutAdmin = () => setIsGlobalAdmin(false);
+
+    useEffect(()=>{
+        let lastScrollY = window.pageYOffset, ticking = false;
+        const updateNav = () => {
+            const curr = window.pageYOffset;
+            if(curr<60) setShowNav(true);
+            else if(curr>lastScrollY+5) setShowNav(false);
+            else if(curr<lastScrollY-5) setShowNav(true);
+            lastScrollY = curr>0?curr:0; ticking=false;
+        };
+        const onScroll = ()=>{ if(!ticking){window.requestAnimationFrame(updateNav);ticking=true;} };
+        window.addEventListener('scroll',onScroll,{passive:true});
+        return ()=>window.removeEventListener('scroll',onScroll);
+    },[]);
+
+    useEffect(()=>{
+        const init = async () => {
+            const { auth, signInAnonymously, db, collection, onSnapshot, appId, doc } = window.FB_SDK;
+            await signInAnonymously(auth);
+            onSnapshot(collection(db,'artifacts',appId,'public','data','members'), s=>{
+                const list = s.docs.map(d=>({id:d.id,...d.data()}));
+                setMembers(list.sort((a,b)=>(a.order||99)-(b.order||99)));
+            });
+            onSnapshot(collection(db,'artifacts',appId,'public','data','worship'), s=>{
+                setHistory(s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.date.localeCompare(a.date)));
+            });
+            onSnapshot(doc(db,'artifacts',appId,'public','data','settings','guide'), s=>{
+                if(s.exists()) setGuideData(s.data());
+            });
+            onSnapshot(doc(db,'artifacts',appId,'public','data','settings','finance'), s=>{
+                if(s.exists()) setFinance(s.data());
+            });
+            onSnapshot(doc(db,'artifacts',appId,'public','data','settings','admin'), s=>{
+                if(s.exists()) { setAdminPass(s.data().password); }
+                else { window.FB_SDK.setDoc(doc(db,'artifacts',appId,'public','data','settings','admin'),{password:"1234"}); }
+            });
+            setReady(true);
+        };
+        if (window.FB_SDK) init();
+        else window.addEventListener('firebase-ready', init);
+    },[]);
+
+    const handleUpdateGuide = async (newData) => { const {db,doc,setDoc,appId}=window.FB_SDK; await setDoc(doc(db,'artifacts',appId,'public','data','settings','guide'),newData); };
+    const handleUpdateFinanceEdits = async (carryOver, edits) => { const {db,doc,setDoc,updateDoc,appId}=window.FB_SDK; await setDoc(doc(db,'artifacts',appId,'public','data','settings','finance'),{carryOver:Number(carryOver)}); for(const id in edits){if(edits[id]!==undefined){await updateDoc(doc(db,'artifacts',appId,'public','data','worship',id),{offering:Number(edits[id])});}} };
+    const handleUpdateRecord = async (id, data) => { const {db,doc,updateDoc,appId}=window.FB_SDK; await updateDoc(doc(db,'artifacts',appId,'public','data','worship',id),{date:data.date,type:data.type||"순예배",members:data.members,offering:Number(data.offering)||0,location:data.location||"",notes:data.notes||""}); };
+    const handleDeleteRecord = async (id) => { const {db,doc,deleteDoc,appId}=window.FB_SDK; await deleteDoc(doc(db,'artifacts',appId,'public','data','worship',id)); };
+    const handleUpdatePrayer = async (id, prayer) => { const {db,doc,updateDoc,appId}=window.FB_SDK; await updateDoc(doc(db,'artifacts',appId,'public','data','members',id),{prayer}); };
+    const handleGlobalSaveFamilyInfo = async (families, draftsMap) => {
+        const {db,doc,updateDoc,appId}=window.FB_SDK;
+        const promises=[];
+        for(const f of families){
+            const draft=draftsMap[f.id]; if(!draft) continue;
+            if(f.husband?.id) promises.push(updateDoc(doc(db,'artifacts',appId,'public','data','members',f.husband.id),{name:draft.hName,role:draft.hRole,isParticipating:draft.hPart,children:draft.children,vehicle:draft.vehicle,birthday:draft.hBirthday||""}));
+            if(f.wife?.id) promises.push(updateDoc(doc(db,'artifacts',appId,'public','data','members',f.wife.id),{name:draft.wName,role:draft.wRole,isParticipating:draft.wPart,children:draft.children,vehicle:draft.vehicle,birthday:draft.wBirthday||""}));
+        }
+        await Promise.all(promises);
+    };
+    const handleAddFamily = async () => {
+        const {db,collection,addDoc,appId}=window.FB_SDK;
+        const newId="f_"+Date.now();
+        const newOrder=members.length+1;
+        await addDoc(collection(db,'artifacts',appId,'public','data','members'),{familyId:newId,name:"",role:"",gender:"M",children:"",vehicle:"",prayer:"",isParticipating:false,order:newOrder});
+        await addDoc(collection(db,'artifacts',appId,'public','data','members'),{familyId:newId,name:"",role:"",gender:"F",children:"",vehicle:"",prayer:"",isParticipating:false,order:newOrder+1});
+    };
+    const handleDeleteFamily = async (familyId) => {
+        if(!confirm("이 가족 명단을 완전히 삭제하시겠습니까?")) return;
+        const {db,doc,deleteDoc,appId}=window.FB_SDK;
+        const familyMembers=members.filter(m=>(m.familyId||m.id)===familyId);
+        for(const m of familyMembers){await deleteDoc(doc(db,'artifacts',appId,'public','data','members',m.id));}
+    };
+    const handleChangeAdminPass = async (newPwd) => {
+        const {db,doc,setDoc,appId}=window.FB_SDK;
+        await setDoc(doc(db,'artifacts',appId,'public','data','settings','admin'),{password:newPwd});
+        setAdminPass(newPwd);
+    };
+
+    const tabs = [
+        {id:'prayer', icon:'users', label:'순기도제목'},
+        {id:'guide', icon:'book-open', label:'순예배주보'},
+        {id:'history', icon:'calendar-days', label:'순예배기록'}
+    ];
+    const activeIndex = tabs.findIndex(t=>t.id===view);
+
+    if (!ready) return (
+        <div className="h-screen flex items-center justify-center w-full">
+            <div className="w-12 h-12 border-4 border-[#802B22] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+
+    return (
+        <div className="w-full min-h-[100dvh] bg-[#F3F4F6] flex flex-col relative overflow-x-hidden">
+            <div className={`bg-white border-b border-gray-100 shadow-sm z-40 flex justify-center w-full fixed top-0 transition-transform duration-300 ease-in-out ${showNav?'translate-y-0':'-translate-y-full'}`}>
+                <div className="w-full max-w-6xl flex items-center gap-3 p-4 md:p-5">
+                    <div className="w-9 h-9 rounded-xl bg-[#802B22] flex items-center justify-center shrink-0">
+                        <Icon name="church" className="w-5 h-5 text-white"/>
+                    </div>
+                    <h2 className="text-[19px] md:text-xl font-black tracking-tighter text-gray-800 flex-1">{groupName} 매니저</h2>
+                    {isGlobalAdmin && (
+                        <button onClick={logoutAdmin} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-[#802B22] text-xs font-black rounded-xl active:scale-95 hover:bg-red-100 shadow-sm">
+                            <Icon name="lock" className="w-3.5 h-3.5"/> 관리자 종료
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {showGlobalAuth && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[999999] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={()=>{setShowGlobalAuth(false);setGlobalAuthError('');setGlobalAuthInput('');}}>
+                    <div className="bg-white p-8 rounded-[2rem] w-full max-w-sm shadow-2xl border border-gray-100 text-center" onClick={e=>e.stopPropagation()}>
+                        <h3 className="text-2xl font-black text-gray-800 mb-2">관리자 인증</h3>
+                        <p className="text-sm text-gray-500 font-bold mb-6">보안을 위해 비밀번호가 필요합니다.</p>
+                        <input type="password" value={globalAuthInput} onChange={e=>{setGlobalAuthInput(e.target.value);setGlobalAuthError('');}} onKeyDown={e=>{if(e.key==='Enter')handleGlobalAuthConfirm();}} className={`w-full p-4 bg-[#F3F4F6] border ${globalAuthError?'border-red-400':'border-transparent'} rounded-2xl font-black text-center text-xl tracking-[0.2em] mb-2 outline-none focus:border-[#802B22]`} placeholder="••••••••" autoFocus/>
+                        {globalAuthError && <p className="text-red-500 text-sm font-bold mb-2">{globalAuthError}</p>}
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={()=>{setShowGlobalAuth(false);setGlobalAuthError('');setGlobalAuthInput('');}} className="flex-1 py-4 text-gray-500 text-lg font-black rounded-2xl active:scale-95 hover:bg-gray-50">취소</button>
+                            <button onClick={handleGlobalAuthConfirm} className="flex-1 py-4 bg-[#802B22] text-white text-lg font-black rounded-2xl active:scale-95 shadow-md hover:bg-[#6c231c]">확인</button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            <div className="flex-1 w-full flex justify-center pt-[74px] md:pt-[80px] pb-[100px] bg-[#F3F4F6]">
+                <div className="w-full max-w-6xl p-4 md:p-6">
+                    {view==='prayer' && <PrayerListView members={members} onUpdate={handleUpdatePrayer}/>}
+                    {view==='guide' && <WorshipGuideView guideData={guideData} onUpdateGuide={handleUpdateGuide}/>}
+                    {view==='history' && <WorshipHistoryView history={history} members={members} finance={finance} isGlobalAdmin={isGlobalAdmin} onRequestAdmin={requestAdmin} onUpdateFinanceEdits={handleUpdateFinanceEdits} onUpdateRecord={handleUpdateRecord} onDeleteRecord={handleDeleteRecord} onOpenDirectory={()=>setShowDirectory(true)} onAddRecord={async(r)=>{const{db,collection,addDoc,appId}=window.FB_SDK;await addDoc(collection(db,'artifacts',appId,'public','data','worship'),r);}}/>}
+                </div>
+            </div>
+
+            <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 h-[76px] md:h-[84px] safe-bottom z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] flex justify-center transition-transform duration-300 ease-in-out ${showNav?'translate-y-0':'translate-y-full'}`}>
+                <div className="w-full max-w-xl flex relative h-full px-2 items-center pb-1">
+                    <div className="absolute h-[56px] top-1/2 -translate-y-1/2 bg-red-50 rounded-[1.2rem] transition-transform duration-500" style={{width:`calc((100% - 16px) / 3)`,left:`8px`,transform:`translateX(calc(${activeIndex} * 100%))`,transitionTimingFunction:'cubic-bezier(0.34, 1.56, 0.64, 1)'}}/>
+                    {tabs.map(t=>(
+                        <button key={t.id} onClick={()=>{setView(t.id);window.scrollTo({top:0,behavior:'smooth'});setShowNav(true);}} className="flex-1 relative z-10 flex flex-col items-center justify-center h-full w-full outline-none" style={{WebkitTapHighlightColor:'transparent'}}>
+                            <div className={`transition-all duration-500 ease-out flex flex-col items-center ${view===t.id?'-translate-y-1.5':'translate-y-0'}`}>
+                                <Icon name={t.icon} className={`transition-colors duration-500 ${view===t.id?'text-[#802B22] w-[22px] h-[22px] stroke-[2.5]':'text-gray-400 w-6 h-6 stroke-2'}`}/>
+                            </div>
+                            <span className={`text-[11px] md:text-xs font-black tracking-tighter absolute bottom-1.5 transition-colors duration-500 ease-out ${view===t.id?'text-[#802B22]':'text-gray-400'}`}>{t.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </nav>
+
+            {showDirectory && <DirectoryModal members={members} onClose={()=>setShowDirectory(false)} onGlobalSave={handleGlobalSaveFamilyInfo} onAddFamily={handleAddFamily} onDeleteFamily={handleDeleteFamily} adminPass={adminPass} onChangeAdminPass={handleChangeAdminPass} isGlobalAdmin={isGlobalAdmin} onRequestAdmin={requestAdmin}/>}
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════
+//  루트 컴포넌트 (마법사 ↔ 메인 앱 전환)
+// ═══════════════════════════════════════════════
+const Root = () => {
+    const [mode, setMode] = useState('loading');
+
+    useEffect(()=>{
+        const onReady = () => setMode('app');
+        const onWizard = () => setMode('wizard');
+        window.addEventListener('firebase-ready', onReady);
+        window.addEventListener('show-wizard', onWizard);
+        // 이미 발생한 경우
+        if (window.FB_SDK) setMode('app');
+        return ()=>{
+            window.removeEventListener('firebase-ready', onReady);
+            window.removeEventListener('show-wizard', onWizard);
+        };
+    },[]);
+
+    if (mode === 'loading') return (
+        <div className="h-screen flex flex-col items-center justify-center bg-white gap-4">
+            <div className="w-12 h-12 border-4 border-[#802B22] border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-400 font-bold text-sm">잠시만 기다려주세요...</p>
+        </div>
+    );
+    if (mode === 'wizard') return <SetupWizard />;
+    return <MainApp />;
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<Root />);
+</script>
+</body>
+</html>
