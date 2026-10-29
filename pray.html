@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚙️ 기도제목 매니저 셋업 위저드</title>
+    <title>🙏 중보기도 매니저 셋업 위저드</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -69,8 +69,8 @@
 <body>
 <div class="card">
     <div class="logo">🙏</div>
-    <h1>기도제목 매니저 셋업 위저드</h1>
-    <p class="subtitle">맞춤 기도제목 관리 사이트 파일 생성기</p>
+    <h1>중보기도 매니저 셋업 위저드</h1>
+    <p class="subtitle">개인/그룹 맞춤형 중보기도 관리 사이트 생성기</p>
     <div class="info-pills">
         <span class="pill">🔥 Firebase onnuri-a5bec</span>
         <span class="pill">🚀 Netlify 무료배포</span>
@@ -78,14 +78,14 @@
 
     <div class="row">
         <div class="field">
-            <label>공동체명</label>
-            <p class="hint">예: 온유공동체, 열린공동체</p>
+            <label>소속 (공동체/부서)</label>
+            <p class="hint">예: 온유공동체, 청년부</p>
             <input type="text" id="communityName" placeholder="예: 온유공동체" oninput="onInput()" onkeydown="if(event.key==='Enter') document.getElementById('soonName').focus()" />
         </div>
         <div class="field">
             <label>모임/그룹 이름</label>
-            <p class="hint">예: 다윗 5순, 청년부 1조</p>
-            <input type="text" id="soonName" placeholder="예: 다윗 5순" oninput="onInput()" onkeydown="if(event.key==='Enter') generate()" />
+            <p class="hint">예: 다윗 3순, 중보기도팀</p>
+            <input type="text" id="soonName" placeholder="예: 다윗 3순" oninput="onInput()" onkeydown="if(event.key==='Enter') generate()" />
         </div>
     </div>
 
@@ -106,24 +106,24 @@
         <ol>
             <li>아래 <strong>"Netlify 열기"</strong> 버튼 클릭</li>
             <li>열린 Netlify 페이지에 파일을 <strong>드래그&amp;드롭</strong></li>
-            <li>배포 완료! URL 복사해서 모임원들에게 공유 🎉</li>
+            <li>배포 완료! URL 복사해서 멤버들에게 공유 🎉</li>
         </ol>
         <div class="tip">
             💡 URL이 <strong>xxx.netlify.app</strong> 형태로 자동 생성돼요.<br>
-            리더가 카톡으로 링크 공유하면 모임원들이 바로 접속 가능합니다.
+            카톡으로 링크를 공유하면 누구나 기도제목을 볼 수 있습니다.
         </div>
         <button class="btn" style="margin-top:16px" onclick="openNetlify()">🚀 Netlify 열기</button>
         <button class="btn secondary" onclick="generate()">↩️ 파일 다시 다운로드</button>
     </div>
 </div>
 <script>
+// 내부 코드 충돌을 방지하기 위해 마크다운 파서 및 HTML 파서가 오작동하지 않도록 템플릿 문자열을 안전하게 인코딩합니다.
 const TEMPLATE = `<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- PWA 및 스마트폰 홈 화면 추가 설정 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="__SOON_COMPACT__">
@@ -132,88 +132,49 @@ const TEMPLATE = `<!DOCTYPE html>
     <meta name="theme-color" content="#802B22">
     <link rel="icon" type="image/png" sizes="192x192" href="https://jongsungjoo.github.io/onnuri/icon.png">
     
-    <!-- 카카오톡 공유용 오픈그래프(OG) 태그 -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="__COMMUNITY__ __SOON_DISPLAY__ 기도제목">
-    <meta property="og:description" content="__COMMUNITY__ __SOON_COMPACT__의 기도제목 관리 시스템입니다.">
+    <meta property="og:title" content="__COMMUNITY__ __SOON_DISPLAY__ 중보기도 매니저">
+    <meta property="og:description" content="__COMMUNITY__ __SOON_COMPACT__의 중보기도 관리 시스템입니다.">
     <meta property="og:image" content="https://jongsungjoo.github.io/onnuri/icon.png">
-    <meta property="og:image:width" content="800">
-    <meta property="og:image:height" content="800">
     
-    <title>__COMMUNITY__ __SOON_DISPLAY__ 기도제목</title>
+    <title>__COMMUNITY__ __SOON_DISPLAY__ 중보기도 매니저</title>
 
-    <!-- PWA 매니페스트 및 서비스 워커 동적 등록 -->
     <script>
         const manifest = {
-            "name": "__SOON_COMPACT__기도제목",
-            "short_name": "__SOON_COMPACT__기도제목",
+            "name": "__SOON_COMPACT__ 중보기도",
+            "short_name": "__SOON_COMPACT__ 중보기도",
             "start_url": ".",
             "display": "standalone",
             "background_color": "#F3F4F6",
             "theme_color": "#802B22",
             "icons": [
-                {
-                    "src": "https://jongsungjoo.github.io/onnuri/icon.png",
-                    "sizes": "192x192",
-                    "type": "image/png",
-                    "purpose": "any maskable"
-                },
-                {
-                    "src": "https://jongsungjoo.github.io/onnuri/icon.png",
-                    "sizes": "512x512",
-                    "type": "image/png",
-                    "purpose": "any maskable"
-                }
+                { "src": "https://jongsungjoo.github.io/onnuri/icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+                { "src": "https://jongsungjoo.github.io/onnuri/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
             ]
         };
         const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
         const manifestUrl = URL.createObjectURL(manifestBlob);
         document.write('<link rel="manifest" href="' + manifestUrl + '">');
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                const swCode = "self.addEventListener('install', function(e) { self.skipWaiting(); }); self.addEventListener('fetch', function(e) { e.respondWith(fetch(e.request).catch(function() { return new Response('Offline'); })); });";
-                const swBlob = new Blob([swCode], {type: 'application/javascript'});
-                const swUrl = URL.createObjectURL(swBlob);
-                navigator.serviceWorker.register(swUrl).catch(function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
-            });
-        }
-    <\/script>
+    <`+`/script>
     
-    <!-- Scripts -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-    <script src="https://cdn.tailwindcss.com"><\/script>
-    <script src="https://unpkg.com/lucide@latest"><\/script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"><`+`/script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><`+`/script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"><`+`/script>
+    <script src="https://cdn.tailwindcss.com"><`+`/script>
+    <script src="https://unpkg.com/lucide@latest"><`+`/script>
 
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        :root { 
-            --primary: #802B22;
-            --bg: #F3F4F6;
-        }
-        
+        :root { --primary: #802B22; --bg: #F3F4F6; }
         html, body { 
             font-family: 'Pretendard', sans-serif; 
-            background-color: var(--bg); 
-            color: #1F2937;
-            -webkit-tap-highlight-color: transparent;
-            margin: 0;
-            padding: 0;
-            width: 100%;
+            background-color: var(--bg); color: #1F2937;
+            -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; width: 100%;
         }
-        
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
         .card-shadow { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05); }
-        
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.4s ease-out forwards; }
-        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
@@ -225,27 +186,22 @@ const TEMPLATE = `<!DOCTYPE html>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, query, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSy" + "BlPSG5JU5zqJl6nRF5AT4EBZNN6kYjXHU",
             authDomain: "onnuri-a5bec.firebaseapp.com",
             projectId: "onnuri-a5bec",
-            storageBucket: "onnuri-a5bec.firebasestorage.app",
-            messagingSenderId: "565538487658",
             appId: "1:565538487658:web:992851dab7360fb180b913"
         };
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
         const appId = typeof __app_id !== 'undefined' ? __app_id : '__APP_ID__';
-
-        window.FB_SDK = { auth, db, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, query, getDoc, updateDoc, signInAnonymously, onAuthStateChanged, appId };
+        window.FB_SDK = { auth, db, doc, collection, onSnapshot, setDoc, addDoc, deleteDoc, updateDoc, signInAnonymously, appId };
         window.dispatchEvent(new Event('firebase-ready'));
-    <\/script>
+    <`+`/script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
@@ -254,71 +210,52 @@ const TEMPLATE = `<!DOCTYPE html>
             const ref = useRef(null);
             useEffect(() => {
                 if (window.lucide && ref.current) {
-                    ref.current.innerHTML = \`<i data-lucide="\${name}"></i>\`;
+                    ref.current.innerHTML = "<i data-lucide='" + name + "'></i>";
                     window.lucide.createIcons({ root: ref.current });
                 }
             }, [name]);
-            return <span ref={ref} className={\`inline-flex items-center justify-center \${className}\`} />;
+            return <span ref={ref} className={"inline-flex items-center justify-center " + className} />;
         };
 
         const Card = ({ children, className = "" }) => (
-            <div className={\`bg-white rounded-[32px] p-6 card-shadow \${className}\`}>{children}</div>
+            <div className={"bg-white rounded-[32px] p-6 card-shadow " + className}>{children}</div>
         );
 
-        // --- 태그 추출기 ---
-        const extractTags = (text) => {
+        const extractTags = (text, member) => {
             if (!text) return [];
             const tags = new Set();
-            
             const healthText = text.replace(/건강한\\s*가정/g, '');
-            if (/건강|치료|수술|아프|병원|항암|질병|질환|입원|투병/.test(healthText)) tags.add('건강');
+            if (/건강|치료|수술|아픔|병원|항암|질병|질환|입원|투병/.test(healthText)) tags.add('건강');
             if (/부모님|어머니|어머님|아버지|아버님|장인|장모|시어머니|시아버지|시댁|처가|친정|양가/.test(text)) tags.add('부모님');
             if (/자녀|아들|딸|아이|임신|출산|육아|학업|학교|대학|수능|합격|공부|진로/.test(text)) tags.add('자녀');
             if (/사역|사명|순장|봉사|전도|선교|임원|교사|목장|다락방/.test(text)) tags.add('교회/사역');
             if (/직장|취업|이직|회사|면접|승진|업무|사업|매출|계약/.test(text)) tags.add('직장/사업');
             if (/말씀|믿음|관계|갈등|마음|우울|평안|위로/.test(text)) tags.add('말씀/믿음');
             if (/가정|남편|아내|부부|결혼|배우자|신앙|예배|교회|성령|은혜|기도/.test(text)) tags.add('가정/신앙');
-            
             return Array.from(tags).slice(0, 4); 
         };
 
-        // --- 개별 기도제목 카드 ---
         const PrayerCard = ({ m, onEditClick, forceExpand }) => {
             const [isExpanded, setIsExpanded] = useState(true);
-            const tags = extractTags(m.prayer);
+            const tags = extractTags(m.prayer, m);
 
-            useEffect(() => {
-                setIsExpanded(forceExpand);
-            }, [forceExpand]);
+            useEffect(() => { setIsExpanded(forceExpand); }, [forceExpand]);
 
             const handleCopy = (e) => {
                 e.stopPropagation();
-                const text = \`[\${m.name}\${m.role ? ' ' + m.role : ''}]\\n\${m.prayer || ''}\`;
-                
+                const text = "[" + m.name + (m.role ? ' ' + m.role : '') + "]\\n" + (m.prayer ? m.prayer : '');
                 if (navigator.clipboard && window.isSecureContext) {
-                    navigator.clipboard.writeText(text).then(() => {
-                        alert('개별 기도제목이 복사되었습니다.');
-                    }).catch(() => fallbackCopy(text));
-                } else {
-                    fallbackCopy(text);
-                }
+                    navigator.clipboard.writeText(text).then(() => alert('개별 기도제목이 복사되었습니다.')).catch(() => fallbackCopy(text));
+                } else fallbackCopy(text);
             };
 
             const fallbackCopy = (text) => {
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                textArea.style.top = "-999999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    alert('개별 기도제목이 복사되었습니다.');
-                } catch (err) {
-                    alert('복사에 실패했습니다.');
-                }
+                textArea.style.position = "fixed"; textArea.style.left = "-999999px"; textArea.style.top = "-999999px";
+                document.body.appendChild(textArea); textArea.focus(); textArea.select();
+                try { document.execCommand('copy'); alert('개별 기도제목이 복사되었습니다.'); } 
+                catch (err) { alert('복사에 실패했습니다.'); }
                 document.body.removeChild(textArea);
             };
 
@@ -355,7 +292,6 @@ const TEMPLATE = `<!DOCTYPE html>
                             )}
                         </div>
                     </div>
-
                     {isExpanded && (
                         <div className="px-3.5 pb-5 pt-4 md:px-5 border-t border-gray-50 bg-gray-50/30">
                             <div className="relative fade-in">
@@ -385,9 +321,8 @@ const TEMPLATE = `<!DOCTYPE html>
             );
         };
 
-        // --- 메인 기도제목 뷰 ---
-        const PrayerListView = ({ members, onUpdate }) => {
-            const activeMembers = useMemo(() => members.filter(m => m.name.trim() !== ''), [members]);
+        const PrayerListView = ({ members, onUpdate, onOpenAdmin, isGlobalAdmin, onRequestAdmin }) => {
+            const activeMembers = useMemo(() => members.filter(m => m.name && m.name.trim() !== ''), [members]);
             
             const [shuffledIds, setShuffledIds] = useState([]);
             useEffect(() => {
@@ -405,33 +340,23 @@ const TEMPLATE = `<!DOCTYPE html>
 
             const allTags = useMemo(() => {
                 const tags = new Set();
-                activeMembers.forEach(m => extractTags(m.prayer).forEach(t => tags.add(t)));
+                activeMembers.forEach(m => extractTags(m.prayer, m).forEach(t => tags.add(t)));
                 return Array.from(tags);
             }, [activeMembers]);
 
             const [selectedTag, setSelectedTag] = useState(null);
             const [isAllExpanded, setIsAllExpanded] = useState(true);
-
             const [editingMember, setEditingMember] = useState(null);
             const [editDraft, setEditDraft] = useState("");
 
             const filteredMembers = useMemo(() => {
-                if (selectedTag === '가나다순') {
-                    return [...activeMembers].sort((a, b) => a.name.localeCompare(b.name));
-                }
+                if (selectedTag === '가나다순') return [...activeMembers].sort((a, b) => a.name.localeCompare(b.name));
                 if (!selectedTag) return displayMembers;
-                return displayMembers.filter(m => extractTags(m.prayer).includes(selectedTag));
+                return displayMembers.filter(m => extractTags(m.prayer, m).includes(selectedTag));
             }, [displayMembers, activeMembers, selectedTag]);
 
-            const openEdit = (m) => {
-                setEditingMember(m);
-                setEditDraft(m.prayer || "");
-            };
-
-            const closeEdit = () => {
-                setEditingMember(null);
-                setEditDraft("");
-            };
+            const openEdit = (m) => { setEditingMember(m); setEditDraft(m.prayer || ""); };
+            const closeEdit = () => { setEditingMember(null); setEditDraft(""); };
 
             const handleSavePrayer = () => {
                 onUpdate(editingMember.id, editDraft);
@@ -439,33 +364,17 @@ const TEMPLATE = `<!DOCTYPE html>
             };
 
             const handleShareAll = async () => {
-                const prayers = activeMembers
-                    .filter(m => m.prayer && m.prayer.trim() !== '')
-                    .sort((a, b) => (a.order || 99) - (b.order || 99));
-
-                let text = "★__COMMUNITY__ __SOON_DISPLAY__ 기도제목★\\n\\n";
-                prayers.forEach(m => {
-                    text += \`[\${m.name} \${m.role || ''}]\\n\${m.prayer}\\n\\n\`;
-                });
-
+                const prayers = activeMembers.filter(m => m.prayer && m.prayer.trim() !== '').sort((a, b) => (a.order || 99) - (b.order || 99));
+                let text = "★ 기도제목 ★\\n\\n";
+                prayers.forEach(m => { text += "[" + m.name + " " + (m.role ? m.role : '') + "]\\n" + m.prayer + "\\n\\n"; });
                 let copySuccess = false;
                 if (navigator.clipboard && window.isSecureContext) {
-                    try {
-                        await navigator.clipboard.writeText(text);
-                        copySuccess = true;
-                    } catch (e) {
-                        copySuccess = fallbackCopy(text, true);
-                    }
-                } else {
-                    copySuccess = fallbackCopy(text, true);
-                }
+                    try { await navigator.clipboard.writeText(text); copySuccess = true; } catch (e) { copySuccess = fallbackCopy(text, true); }
+                } else copySuccess = fallbackCopy(text, true);
 
                 if (navigator.share) {
-                    try {
-                        await navigator.share({ text: text });
-                    } catch (error) {
-                        if(copySuccess) alert('전체 기도제목이 복사되었습니다.');
-                    }
+                    try { await navigator.share({ text: text }); } 
+                    catch (error) { if(copySuccess) alert('전체 기도제목이 복사되었습니다.'); }
                 } else {
                     if(copySuccess) alert('전체 기도제목이 복사되었습니다.\\n(현재 브라우저는 공유하기 기능을 지원하지 않아 복사만 진행되었습니다)');
                 }
@@ -473,39 +382,33 @@ const TEMPLATE = `<!DOCTYPE html>
 
             const fallbackCopy = (text, silent = false) => {
                 const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                textArea.style.top = "-999999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
+                textArea.value = text; textArea.style.position = "fixed"; textArea.style.left = "-999999px"; textArea.style.top = "-999999px";
+                document.body.appendChild(textArea); textArea.focus(); textArea.select();
                 let success = false;
-                try {
-                    document.execCommand('copy');
-                    success = true;
-                    if(!silent) alert('전체 기도제목이 복사되었습니다.');
-                } catch (err) {
-                    if(!silent) alert('복사에 실패했습니다.');
-                }
+                try { document.execCommand('copy'); success = true; if(!silent) alert('전체 기도제목이 복사되었습니다.'); } 
+                catch (err) { if(!silent) alert('복사에 실패했습니다.'); }
                 document.body.removeChild(textArea);
                 return success;
             };
 
             return (
-                <div className="space-y-6 animate-slide-up pb-6">
-                    <header className="px-1 flex justify-between items-end">
+                <div className="space-y-6 animate-slide-up">
+                    <header className="px-1 flex justify-between items-end mb-4">
                         <div>
                             <span className="text-[#802B22] font-black text-[10px] tracking-widest uppercase">PRAYER REQUEST</span>
                             <h1 className="text-2xl font-black mt-1">기도제목</h1>
                         </div>
+                        <button onClick={() => { if (isGlobalAdmin) onOpenAdmin(); else onRequestAdmin(onOpenAdmin); }} className="p-2 text-gray-500 bg-white border border-gray-200 rounded-xl shadow-sm active:scale-95 hover:bg-gray-50 transition-colors flex items-center gap-1.5">
+                            <Icon name="settings" className="w-4 h-4" />
+                            <span className="text-xs font-black">명단 관리</span>
+                        </button>
                     </header>
 
                     <div className="flex flex-wrap gap-2.5 px-1">
-                        <button onClick={() => setSelectedTag(null)} className={\`px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm \${!selectedTag ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}\`}>전체보기</button>
-                        <button onClick={() => setSelectedTag('가나다순')} className={\`px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm \${selectedTag === '가나다순' ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}\`}>#가나다순</button>
+                        <button onClick={() => setSelectedTag(null)} className={"px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm " + (!selectedTag ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')}>전체보기</button>
+                        <button onClick={() => setSelectedTag('가나다순')} className={"px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm " + (selectedTag === '가나다순' ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')}>#가나다순</button>
                         {allTags.map(tag => (
-                            <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} className={\`px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm \${selectedTag === tag ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}\`}>#{tag}</button>
+                            <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)} className={"px-4 py-2 rounded-full text-sm font-black transition-colors shadow-sm " + (selectedTag === tag ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')}>#{tag}</button>
                         ))}
                     </div>
 
@@ -516,7 +419,7 @@ const TEMPLATE = `<!DOCTYPE html>
                         </button>
                         <button onClick={() => setIsAllExpanded(!isAllExpanded)} className="text-sm font-black text-[#802B22] flex items-center gap-1.5 bg-red-50 px-4 py-2 rounded-xl active:scale-95 transition-transform shadow-sm hover:bg-red-100 border border-red-100">
                             <Icon name={isAllExpanded ? "chevrons-up" : "chevrons-down"} className="w-4 h-4" />
-                            {isAllExpanded ? "모두 접기" : "모두 펼치기"}
+                            {isAllExpanded ? "기도제목 모두 접기" : "기도제목 모두 펼치기"}
                         </button>
                     </div>
 
@@ -529,9 +432,8 @@ const TEMPLATE = `<!DOCTYPE html>
                         ))}
                     </div>
 
-                    {/* 기도제목 수정 모달 */}
                     {editingMember && ReactDOM.createPortal(
-                        <div className="fixed inset-0 z-[99999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 fade-in pb-[90px]" onClick={closeEdit}>
+                        <div className="fixed inset-0 z-[99999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 fade-in" onClick={closeEdit}>
                             <div className="w-full max-w-2xl mx-auto flex flex-col max-h-full shadow-2xl rounded-3xl bg-white" onClick={e=>e.stopPropagation()}>
                                 <Card className="border-t-8 border-[#802B22] fade-in p-5 md:p-8 flex flex-col overflow-hidden w-full max-h-[85vh]">
                                     <div className="flex justify-between items-center mb-6 shrink-0">
@@ -563,28 +465,24 @@ const TEMPLATE = `<!DOCTYPE html>
             );
         };
 
-        // --- 명단 관리 모달 (개인 단위) ---
-        const DirectoryModal = ({ members, onClose, onGlobalSave, onAddMember, onDeleteMember, adminPass, onChangeAdminPass, isGlobalAdmin, onRequestAdmin }) => {
-            const [isAdmin, setIsAdmin] = useState(false);
+        const DirectoryModal = ({ members, onClose, onGlobalSave, onAddMember, onDeleteMember, onChangeAdminPass }) => {
             const [showChangePwd, setShowChangePwd] = useState(false);
             const [newPwd, setNewPwd] = useState('');
-
             const [drafts, setDrafts] = useState({});
             const [hasChanges, setHasChanges] = useState(false);
 
+            const sortedMembers = useMemo(() => {
+                return [...members].sort((a,b) => (a.order || 99) - (b.order || 99));
+            }, [members]);
+
             useEffect(() => {
-                if (isAdmin) {
-                    const initialDrafts = {};
-                    members.forEach(m => {
-                        initialDrafts[m.id] = {
-                            name: m.name || '', 
-                            role: m.role || ''
-                        };
-                    });
-                    setDrafts(initialDrafts);
-                    setHasChanges(false);
-                }
-            }, [isAdmin, members]);
+                const initialDrafts = {};
+                sortedMembers.forEach(m => {
+                    initialDrafts[m.id] = { name: m.name || '', role: m.role || '' };
+                });
+                setDrafts(initialDrafts);
+                setHasChanges(false);
+            }, [sortedMembers]);
 
             const handleChangePwd = () => {
                 onChangeAdminPass(newPwd); setShowChangePwd(false); setNewPwd('');
@@ -592,87 +490,72 @@ const TEMPLATE = `<!DOCTYPE html>
             };
 
             const executeGlobalSave = async (showAlert = true) => {
-                await onGlobalSave(members, drafts);
+                await onGlobalSave(sortedMembers, drafts);
                 setHasChanges(false);
                 if (showAlert) alert('명단 업데이트가 저장되었습니다.');
             };
 
             const handleBack = () => {
-                if (isAdmin) {
-                    if (hasChanges) {
-                        if (confirm("변경 사항을 저장하시겠습니까?\\n[확인] 저장 후 조회 모드로 이동\\n[취소] 저장하지 않고 조회 모드로 이동")) {
-                            executeGlobalSave(false).then(() => setIsAdmin(false));
-                        } else {
-                            setIsAdmin(false);
-                            setHasChanges(false);
-                        }
-                    } else {
-                        setIsAdmin(false);
-                    }
-                } else {
-                    onClose();
-                }
+                if (hasChanges) {
+                    if (confirm("변경 사항을 저장하시겠습니까?\\n[확인] 저장 후 닫기\\n[취소] 저장하지 않고 닫기")) {
+                        executeGlobalSave(false).then(() => onClose());
+                    } else { onClose(); }
+                } else { onClose(); }
             };
 
             return ReactDOM.createPortal(
                 <div className="fixed inset-0 z-[150] bg-[#F3F4F6] flex flex-col animate-slide-up">
                     <header className="p-4 bg-white border-b border-gray-100 shrink-0 shadow-sm safe-top flex justify-center">
-                        <div className="w-full max-w-6xl flex items-center justify-between">
+                        <div className="w-full max-w-4xl flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <button onClick={handleBack} className="p-2 bg-gray-50 rounded-full text-gray-500 active:scale-95 transition-transform hover:bg-gray-200"><Icon name="chevron-left" className="w-6 h-6" /></button>
-                                <h2 className="text-xl font-black text-gray-800 tracking-tighter">명단관리</h2>
+                                <h2 className="text-xl font-black text-gray-800 tracking-tighter">명단 관리 (관리자)</h2>
                             </div>
-                            {isAdmin ? (
-                                <div className="flex gap-2">
-                                    <button onClick={() => setShowChangePwd(true)} className="hidden sm:block px-4 py-2 bg-gray-100 text-gray-600 text-xs font-black rounded-lg active:scale-95 hover:bg-gray-200">비번변경</button>
-                                    <button onClick={async () => {
-                                        if (hasChanges) await executeGlobalSave(false);
-                                        onAddMember();
-                                    }} className="px-3 md:px-4 py-2 bg-gray-800 text-white text-xs font-black rounded-lg active:scale-95 hover:bg-gray-900">새 명단 추가</button>
-                                    <button onClick={() => executeGlobalSave(true)} className="px-3 md:px-4 py-2 bg-[#802B22] text-white text-sm font-black rounded-lg active:scale-95 shadow-md flex items-center gap-1.5 hover:bg-[#6c231c]"><Icon name="save" className="w-4 h-4"/>업데이트 저장</button>
-                                </div>
-                            ) : (
-                                <button onClick={() => { if (isGlobalAdmin) { setIsAdmin(true); } else { onRequestAdmin(() => setIsAdmin(true)); } }} className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-sm font-black rounded-lg active:scale-95 flex items-center gap-1.5 hover:bg-gray-50 shadow-sm"><Icon name="lock" className="w-4 h-4"/> 관리자 편집</button>
-                            )}
+                            <div className="flex gap-2">
+                                <button onClick={() => setShowChangePwd(true)} className="hidden sm:block px-4 py-2 bg-gray-100 text-gray-600 text-xs font-black rounded-lg active:scale-95 hover:bg-gray-200">비번변경</button>
+                                <button onClick={async () => { if (hasChanges) await executeGlobalSave(false); onAddMember(); }} className="px-3 md:px-4 py-2 bg-gray-800 text-white text-xs font-black rounded-lg active:scale-95 hover:bg-gray-900">새 멤버 추가</button>
+                                <button onClick={() => executeGlobalSave(true)} className="px-3 md:px-4 py-2 bg-[#802B22] text-white text-sm font-black rounded-lg active:scale-95 shadow-md flex items-center gap-1.5 hover:bg-[#6c231c]"><Icon name="save" className="w-4 h-4"/>업데이트 저장</button>
+                            </div>
                         </div>
                     </header>
 
                     <div className="flex-1 overflow-auto p-4 md:p-6 safe-bottom flex flex-col items-center custom-scrollbar">
-                        <div className="w-full max-w-3xl">
-                            {isAdmin && (
-                                <div className="bg-red-50 border border-red-100 p-4 rounded-xl mb-6 text-sm text-red-600 font-bold leading-relaxed shadow-sm flex justify-between items-center">
-                                    <span>💡 관리자 편집 모드입니다. 변경 후 상단 <strong className="text-[#802B22]">[업데이트 저장]</strong>을 눌러주세요.</span>
-                                    <button onClick={() => setShowChangePwd(true)} className="sm:hidden px-3 py-1.5 bg-white text-gray-600 text-xs font-black rounded-md border border-red-200 active:scale-95">비번변경</button>
-                                </div>
-                            )}
+                        <div className="w-full max-w-4xl">
+                            <div className="bg-red-50 border border-red-100 p-4 rounded-xl mb-4 text-sm text-red-600 font-bold leading-relaxed shadow-sm flex justify-between items-center">
+                                <span>💡 멤버의 이름과 직분을 수정한 후 상단 <strong className="text-[#802B22]">[업데이트 저장]</strong>을 눌러주세요.</span>
+                                <button onClick={() => setShowChangePwd(true)} className="sm:hidden px-3 py-1.5 bg-white text-gray-600 text-xs font-black rounded-md border border-red-200 active:scale-95">비번변경</button>
+                            </div>
                             
-                            <div className="flex flex-col gap-3">
-                                {members.map(m => {
-                                    const draft = drafts[m.id];
-                                    if (isAdmin && draft) {
+                            <div className="w-full rounded-xl border border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <div className="grid grid-cols-12 gap-2 bg-gray-50 text-gray-500 font-black text-xs uppercase tracking-widest p-4 border-b border-gray-200">
+                                    <div className="col-span-5">이름</div>
+                                    <div className="col-span-5">직분</div>
+                                    <div className="col-span-2 text-center">관리</div>
+                                </div>
+                                <div className="divide-y divide-gray-100">
+                                    {sortedMembers.map(m => {
+                                        const draft = drafts[m.id];
+                                        if (!draft) return null;
                                         return (
-                                            <div key={m.id} className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm flex items-center gap-3">
-                                                <input className="flex-1 p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold" value={draft.name} onChange={e => {setDrafts(p => ({...p, [m.id]: {...draft, name: e.target.value}})); setHasChanges(true);}} placeholder="이름" />
-                                                <input className="flex-1 p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#802B22] font-bold" value={draft.role} onChange={e => {setDrafts(p => ({...p, [m.id]: {...draft, role: e.target.value}})); setHasChanges(true);}} placeholder="직분" />
-                                                <button onClick={() => onDeleteMember(m.id)} className="p-2.5 bg-red-50 text-red-600 rounded-lg active:scale-95 hover:bg-red-100 transition-colors"><Icon name="trash-2" className="w-5 h-5"/></button>
+                                            <div key={m.id} className="grid grid-cols-12 gap-2 p-4 items-center bg-blue-50/10 hover:bg-blue-50/30 transition-colors">
+                                                <div className="col-span-5 pr-2">
+                                                    <input className="w-full p-2.5 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm" value={draft.name} onChange={e=>{setDrafts(p=>({...p, [m.id]:{...draft, name: e.target.value}})); setHasChanges(true);}} placeholder="이름 입력"/>
+                                                </div>
+                                                <div className="col-span-5 pr-2">
+                                                    <input className="w-full p-2.5 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:border-[#802B22] font-bold shadow-sm" value={draft.role} onChange={e=>{setDrafts(p=>({...p, [m.id]:{...draft, role: e.target.value}})); setHasChanges(true);}} placeholder="직분 (예: 집사, 청년)"/>
+                                                </div>
+                                                <div className="col-span-2 text-center">
+                                                    <button onClick={() => onDeleteMember(m.id)} className="w-full px-2 py-2.5 bg-white text-red-600 text-xs font-black rounded-xl active:scale-95 shadow-sm hover:bg-red-50 transition-colors border border-red-200">삭제</button>
+                                                </div>
                                             </div>
                                         );
-                                    }
-                                    return (
-                                        <div key={m.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="font-black text-gray-800 text-lg">{m.name || '-'}</span>
-                                                <span className="text-sm font-bold text-gray-500">{m.role}</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {members.length === 0 && <div className="text-center text-gray-400 font-bold py-10">등록된 명단이 없습니다.</div>}
+                                    })}
+                                    {sortedMembers.length === 0 && <div className="p-8 text-center text-gray-400 font-bold">등록된 멤버가 없습니다.</div>}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* 비밀번호 변경 모달 */}
                     {showChangePwd && ReactDOM.createPortal(
                         <div className="fixed inset-0 z-[200] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 fade-in" onClick={() => setShowChangePwd(false)}>
                             <div className="bg-white p-8 rounded-[2rem] w-full max-w-sm shadow-2xl border border-gray-100 text-center" onClick={e=>e.stopPropagation()}>
@@ -682,8 +565,8 @@ const TEMPLATE = `<!DOCTYPE html>
                                     value={newPwd} 
                                     onChange={e=>setNewPwd(e.target.value)} 
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleChangePwd(); }}
-                                    className="w-full p-4 bg-[#F3F4F6] border border-transparent rounded-2xl font-black text-center text-lg mb-6 outline-none focus:border-[#802B22] transition-colors tracking-widest" 
-                                    placeholder="••••"
+                                    className="w-full p-4 bg-[#F3F4F6] border border-transparent rounded-2xl font-black text-center text-xl tracking-[0.2em] mb-6 outline-none focus:border-[#802B22] transition-colors" 
+                                    placeholder="••••••••"
                                     autoFocus
                                 />
                                 <div className="flex gap-3 mt-2">
@@ -705,7 +588,6 @@ const TEMPLATE = `<!DOCTYPE html>
             const [members, setMembers] = useState([]);
             const [adminPass, setAdminPass] = useState("00");
 
-            // --- 전역 관리자 인증 상태 ---
             const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
             const [showGlobalAuth, setShowGlobalAuth] = useState(false);
             const [globalAuthInput, setGlobalAuthInput] = useState('');
@@ -716,20 +598,13 @@ const TEMPLATE = `<!DOCTYPE html>
                 if (isGlobalAdmin) { action(); }
                 else { setPendingGlobalAction(() => action); setShowGlobalAuth(true); }
             };
-            
             const handleGlobalAuthConfirm = () => {
                 if (globalAuthInput === adminPass) {
-                    setIsGlobalAdmin(true);
-                    setShowGlobalAuth(false);
-                    setGlobalAuthInput('');
-                    setGlobalAuthError('');
+                    setIsGlobalAdmin(true); setShowGlobalAuth(false); setGlobalAuthInput(''); setGlobalAuthError('');
                     if (pendingGlobalAction) { pendingGlobalAction(); setPendingGlobalAction(null); }
-                } else {
-                    setGlobalAuthError('비밀번호가 일치하지 않습니다.');
-                }
+                } else setGlobalAuthError('비밀번호가 일치하지 않습니다.');
             };
-            
-            const logoutAdmin = () => { setIsGlobalAdmin(false); };
+            const logoutAdmin = () => setIsGlobalAdmin(false);
 
             useEffect(() => {
                 const init = async () => {
@@ -740,9 +615,9 @@ const TEMPLATE = `<!DOCTYPE html>
                         let list = s.docs.map(d => ({ id: d.id, ...d.data() }));
                         if (list.length === 0) {
                             const defaultMembers = [
-                                { name: "온누리1", role: "순장", prayer: "", order: 1 },
-                                { name: "온누리2", role: "순모", prayer: "", order: 2 },
-                                { name: "온누리3", role: "집사", prayer: "", order: 3 }
+                                { name: "홍길동", role: "리더", prayer: "", order: 1 },
+                                { name: "김철수", role: "멤버", prayer: "", order: 2 },
+                                { name: "이영희", role: "멤버", prayer: "", order: 3 },
                             ];
                             defaultMembers.forEach(m => {
                                 window.FB_SDK.addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'members'), m);
@@ -767,10 +642,10 @@ const TEMPLATE = `<!DOCTYPE html>
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', id), { prayer });
             };
 
-            const handleGlobalSaveFamilyInfo = async (currentMembers, draftsMap) => {
+            const handleGlobalSaveMembers = async (memberList, draftsMap) => {
                 const { db, doc, updateDoc, appId } = window.FB_SDK;
                 const promises = [];
-                for (const m of currentMembers) {
+                for (const m of memberList) {
                     const draft = draftsMap[m.id];
                     if (!draft) continue;
                     promises.push(updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m.id), {
@@ -782,14 +657,13 @@ const TEMPLATE = `<!DOCTYPE html>
 
             const handleAddMember = async () => {
                 const { db, collection, addDoc, appId } = window.FB_SDK;
-                const newOrder = members.length > 0 ? Math.max(...members.map(m => m.order || 0)) + 1 : 1;
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'members'), { name: "", role: "", prayer: "", order: newOrder });
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'members'), { name: "", role: "", prayer: "", order: members.length + 1 });
             };
 
-            const handleDeleteMember = async (id) => {
-                if(!confirm("이 명단을 삭제하시겠습니까?")) return;
+            const handleDeleteMember = async (memberId) => {
+                if(!confirm("이 멤버를 완전히 삭제하시겠습니까? (되돌릴 수 없습니다)")) return;
                 const { db, doc, deleteDoc, appId } = window.FB_SDK;
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', id));
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', memberId));
             };
 
             const handleChangeAdminPass = async (newPwd) => {
@@ -803,35 +677,19 @@ const TEMPLATE = `<!DOCTYPE html>
             return (
                 <div className="w-full min-h-[100dvh] bg-[#F3F4F6] flex flex-col relative overflow-x-hidden">
                     
-                    {/* 상단 헤더 */}
                     <div className="bg-white border-b border-gray-100 shadow-sm z-40 flex justify-center w-full fixed top-0">
-                        <div className="w-full max-w-6xl flex items-center justify-between p-4 md:p-5">
-                            <div className="flex items-center gap-3">
-                                <img src="https://raw.githubusercontent.com/jongsungjoo/grace/refs/heads/main/logo.png" className="w-9 h-9 object-contain rounded-xl" alt="logo" />
-                                <h2 className="text-[19px] md:text-xl font-black tracking-tighter text-gray-800">__COMMUNITY__ __SOON_DISPLAY__</h2>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {isGlobalAdmin ? (
-                                    <button onClick={logoutAdmin} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-[#802B22] text-xs font-black rounded-xl active:scale-95 hover:bg-red-100 transition-colors shadow-sm">
-                                        <Icon name="lock-open" className="w-3.5 h-3.5" />
-                                        관리자 종료
-                                    </button>
-                                ) : (
-                                    <button onClick={() => requestAdmin(() => setShowDirectory(true))} className="flex items-center gap-1.5 p-2 bg-gray-50 border border-gray-200 text-gray-600 text-sm font-black rounded-xl active:scale-95 hover:bg-gray-100 transition-colors shadow-sm">
-                                        <Icon name="users" className="w-5 h-5" />
-                                        <span className="hidden sm:inline text-xs">명단 관리</span>
-                                    </button>
-                                )}
-                                {isGlobalAdmin && (
-                                     <button onClick={() => setShowDirectory(true)} className="flex items-center gap-1.5 p-2 bg-[#802B22] text-white text-sm font-black rounded-xl active:scale-95 hover:bg-[#6c231c] transition-colors shadow-sm">
-                                        <Icon name="users" className="w-5 h-5" />
-                                    </button>
-                                )}
-                            </div>
+                        <div className="w-full max-w-6xl flex items-center gap-3 p-4 md:p-5">
+                            <img src="https://raw.githubusercontent.com/jongsungjoo/grace/refs/heads/main/logo.png" className="w-9 h-9 object-contain rounded-xl" alt="logo" />
+                            <h2 className="text-[19px] md:text-xl font-black tracking-tighter text-gray-800 flex-1">__COMMUNITY__ __SOON_DISPLAY__ 중보기도 매니저</h2>
+                            {isGlobalAdmin && (
+                                <button onClick={logoutAdmin} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-[#802B22] text-xs font-black rounded-xl active:scale-95 hover:bg-red-100 transition-colors shadow-sm">
+                                    <Icon name="lock" className="w-3.5 h-3.5" />
+                                    관리자 종료
+                                </button>
+                            )}
                         </div>
                     </div>
 
-                    {/* 전역 관리자 인증 모달 */}
                     {showGlobalAuth && ReactDOM.createPortal(
                         <div className="fixed inset-0 z-[999999] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => {setShowGlobalAuth(false); setGlobalAuthError(''); setGlobalAuthInput('');}}>
                             <div className="bg-white p-8 rounded-[2rem] w-full max-w-sm shadow-2xl border border-gray-100 text-center" onClick={e=>e.stopPropagation()}>
@@ -842,8 +700,8 @@ const TEMPLATE = `<!DOCTYPE html>
                                     value={globalAuthInput}
                                     onChange={e=>{setGlobalAuthInput(e.target.value); setGlobalAuthError('');}}
                                     onKeyDown={e=>{ if(e.key==='Enter') handleGlobalAuthConfirm(); }}
-                                    className={`w-full p-4 bg-[#F3F4F6] border ${globalAuthError?'border-red-400':'border-transparent'} rounded-2xl font-black text-center text-xl tracking-[0.2em] mb-2 outline-none focus:border-[#802B22] transition-colors`}
-                                    placeholder="••••"
+                                    className={"w-full p-4 bg-[#F3F4F6] border " + (globalAuthError?'border-red-400':'border-transparent') + " rounded-2xl font-black text-center text-xl tracking-[0.2em] mb-2 outline-none focus:border-[#802B22] transition-colors"}
+                                    placeholder="••••••••"
                                     autoFocus
                                 />
                                 {globalAuthError && <p className="text-red-500 text-sm font-bold mb-2">{globalAuthError}</p>}
@@ -856,91 +714,90 @@ const TEMPLATE = `<!DOCTYPE html>
                         document.body
                     )}
 
-                    {/* Main Content */}
-                    <div className="main-content flex-1 w-full flex justify-center pt-[74px] md:pt-[80px] pb-[40px] bg-[#F3F4F6]">
+                    <div className="main-content flex-1 w-full flex justify-center pt-[74px] md:pt-[80px] pb-10 bg-[#F3F4F6]">
                         <div className="w-full max-w-6xl p-4 md:p-6">
-                            <PrayerListView members={members} onUpdate={handleUpdatePrayer} />
+                            <PrayerListView members={members} onUpdate={handleUpdatePrayer} onOpenAdmin={() => setShowDirectory(true)} isGlobalAdmin={isGlobalAdmin} onRequestAdmin={requestAdmin} />
+                            {showDirectory && <DirectoryModal members={members} onClose={() => setShowDirectory(false)} onGlobalSave={handleGlobalSaveMembers} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} onChangeAdminPass={handleChangeAdminPass} />}
                         </div>
                     </div>
-
-                    {/* 명단 관리 모달 */}
-                    {showDirectory && <DirectoryModal members={members} onClose={() => setShowDirectory(false)} onGlobalSave={handleGlobalSaveFamilyInfo} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} adminPass={adminPass} onChangeAdminPass={handleChangeAdminPass} isGlobalAdmin={isGlobalAdmin} onRequestAdmin={requestAdmin} />}
                 </div>
             );
         };
-
+        
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-    <\/script>
+    <`+`/script>
 </body>
 </html>`;
-function toCompact(name) { return name.replace(/\s+/g, ''); }
-function toAppId(community, soon) {
-    const s = toCompact(soon);
-    const map = {'다윗':'david','다니엘':'daniel','요셉':'joseph','모세':'moses','엘리야':'elijah','바울':'paul','베드로':'peter','요한':'john'};
-    let prefix = 'group';
-    for (const [k, v] of Object.entries(map)) {
-        if (s.includes(k)) { prefix = v; break; }
-    }
-    const numMatch = s.match(/\d+/);
-    const num = numMatch ? numMatch[0] : '1';
-    const comShort = toCompact(community).slice(0, 4);
-    return `${comShort}-${prefix}-${num}prayer`;
-}
+
 function onInput() {
-    const com = document.getElementById('communityName').value.trim();
-    const soon = document.getElementById('soonName').value.trim();
+    const c = document.getElementById('communityName').value.trim();
+    const s = document.getElementById('soonName').value.trim();
     const btn = document.getElementById('genBtn');
-    const box = document.getElementById('previewBox');
-    if (com.length >= 2 && soon.length >= 2) {
-        const title = `${com} ${soon} 기도제목`;
-        const appId = toAppId(com, soon);
-        document.getElementById('prev-title').textContent = title;
-        document.getElementById('prev-appid').textContent = appId;
-        box.style.display = 'block';
+    if(c && s) {
         btn.disabled = false;
+        document.getElementById('previewBox').style.display = 'block';
+        document.getElementById('prev-title').innerText = c + " " + s + " 중보기도 매니저";
+        const cid = c.replace(/[^가-힣a-zA-Z0-9]/g, '');
+        const sid = s.replace(/[^가-힣a-zA-Z0-9]/g, '');
+        const autoId = "pray_" + cid + "_" + sid + "_" + Math.floor(Math.random()*1000);
+        document.getElementById('prev-appid').innerText = autoId;
+        window.tempAppId = autoId;
     } else {
-        box.style.display = 'none';
         btn.disabled = true;
+        document.getElementById('previewBox').style.display = 'none';
+        window.tempAppId = null;
     }
 }
+
+let generatedFileUrl = null;
+
 function generate() {
-    const com = document.getElementById('communityName').value.trim();
-    const soon = document.getElementById('soonName').value.trim();
-    if (!com || !soon) return;
-    const btn = document.getElementById('genBtn');
-    const spinner = document.getElementById('spinner');
+    const c = document.getElementById('communityName').value.trim();
+    const s = document.getElementById('soonName').value.trim();
+    const appId = window.tempAppId;
+    if(!c || !s || !appId) return;
+
     const btnText = document.getElementById('btnText');
+    const spinner = document.getElementById('spinner');
+    const btn = document.getElementById('genBtn');
+
+    btnText.innerText = " 생성 중...";
+    spinner.style.display = "inline-block";
     btn.disabled = true;
-    spinner.style.display = 'block';
-    btnText.textContent = '생성 중...';
+
     setTimeout(() => {
-        const comCompact = toCompact(com);
-        const soonCompact = toCompact(soon);
-        const appId = toAppId(com, soon);
-        let result = TEMPLATE;
-        result = result.split('__COMMUNITY__').join(com);
-        result = result.split('__SOON_DISPLAY__').join(soon);
-        result = result.split('__SOON_COMPACT__').join(soonCompact);
-        result = result.split('__APP_ID__').join(appId);
-        const fileName = `기도제목매니저_${comCompact}_${soonCompact}.html`;
-        const blob = new Blob([result], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
+        const compactName = s.replace(/\s+/g, '');
+        
+        let finalHtml = TEMPLATE
+            .replace(/__COMMUNITY__/g, c)
+            .replace(/__SOON_DISPLAY__/g, s)
+            .replace(/__SOON_COMPACT__/g, compactName)
+            .replace(/__APP_ID__/g, appId);
+        
+        const blob = new Blob([finalHtml], { type: 'text/html' });
+        if(generatedFileUrl) URL.revokeObjectURL(generatedFileUrl);
+        generatedFileUrl = URL.createObjectURL(blob);
+        
         const a = document.createElement('a');
-        a.href = url; a.download = fileName;
-        document.body.appendChild(a); a.click();
+        a.href = generatedFileUrl;
+        a.download = "중보기도매니저_" + c + "_" + compactName + ".html";
+        document.body.appendChild(a);
+        a.click();
         document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        btnText.innerText = "📥 사이트 파일 생성 및 다운로드";
+        spinner.style.display = "none";
         btn.disabled = false;
-        spinner.style.display = 'none';
-        btnText.textContent = `✅ ${com} ${soon} 완료! (다시 받기)`;
+
         document.getElementById('netlifyBox').style.display = 'block';
-        document.getElementById('netlifyBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 300);
+    }, 600);
 }
+
 function openNetlify() {
     window.open('https://app.netlify.com/drop', '_blank');
 }
 </script>
 </body>
 </html>
+```eof
